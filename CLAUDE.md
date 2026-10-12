@@ -19,6 +19,10 @@ types (xml/json), so the feed is hosted externally. Goal: a better `rss.xml`.
 3. Build Atom from `apiList()` (what's live and when) plus vault metadata.
 4. Push `feed.atom` to a GitHub repo served by GitHub Pages (Contents API).
 
+Logic lives in `service.ts` (`FeedService`, dependencies injected) and the small modules it
+uses. `main.ts` and `settings.ts` are Obsidian glue: keep logic out of them so it stays
+testable without Obsidian.
+
 ## Publish internals (from the Obsidian 1.14.4 app bundle and a live site, undocumented)
 
 `app.internalPlugins.getEnabledPluginById("publish")` returns the instance, or null if disabled.
@@ -75,7 +79,7 @@ then grep `app.js` (identifiers are minified, property and string names are not)
 commitlint in a husky hook and in CI. A single short subject line: no body, no trailers,
 no attribution, unless explicitly asked. Default branch is `main`.
 
-Run `npm run lint`, `build` and `test` before committing.
+Run `npm run lint`, `build` and `test` before committing (`npm run test:coverage` for coverage).
 Add user-visible changes to `CHANGELOG.md` under `[Unreleased]` ([Keep a Changelog](https://keepachangelog.com/en/1.0.0/)).
 
 Release: `npm version x.y.z`, then `git push --follow-tags`. It bumps `manifest.json`, `versions.json`

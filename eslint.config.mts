@@ -7,6 +7,7 @@ export default defineConfig(
 		'node_modules',
 		'dist',
 		'dev',
+		'coverage',
 		'esbuild.config.mjs',
 		'version-bump.mjs',
 		'versions.json',
@@ -22,7 +23,7 @@ export default defineConfig(
 			},
 			parserOptions: {
 				projectService: {
-					allowDefaultProject: ['eslint.config.mts', 'manifest.json', 'commitlint.config.mjs'],
+					allowDefaultProject: ['eslint.config.mts', 'manifest.json', 'commitlint.config.mjs', 'vitest.config.ts'],
 				},
 				tsconfigRootDir: import.meta.dirname,
 				extraFileExtensions: ['.json'],
@@ -30,4 +31,11 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		files: ['tests/**'],
+		rules: {
+			'obsidianmd/no-global-this': 'off',
+			'obsidianmd/prefer-window-timers': 'off',
+		},
+	},
 );
