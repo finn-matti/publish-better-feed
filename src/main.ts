@@ -1,114 +1,138 @@
+import { Notice, Plugin, debounce } from 'obsidian';
+import { buildEntries } from './entries';
+import { buildAtom } from './feed';
+import { pushFile } from './github';
+import { vaultMetaResolver } from './notes';
 import {
-	Editor,
-	MarkdownView,
-	MarkdownFileInfo,
-	Modal,
-	Notice,
-	Plugin,
-} from 'obsidian';
+	getPublishInstance,
+	hookPublish,
+	parsePublishList,
+	type PublishInstance,
+} from './publish';
 import {
 	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
+	FeedSettingTab,
+	feedUrl,
+	type FeedSettings,
 } from './settings';
 
-// Remember to rename these classes and interfaces!
-
-export default class MyPlugin extends Plugin {
-	settings!: MyPluginSettings;
+export default class FeedPlugin extends Plugin {
+	settings!: FeedSettings;
+	private uninstallHook: (() => void) | null = null;
+	private running = false;
+	private rerun = false;
+	private scheduleRebuild = this.makeDebounce();
 
 	async onload() {
 		await this.loadSettings();
-
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
+		this.addSettingTab(new FeedSettingTab(this.app, this));
 		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			},
+			id: 'rebuild-feed',
+			name: 'Rebuild feed',
+			callback: () => void this.rebuild(true),
 		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (
-				editor: Editor,
-				_ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				editor.replaceSelection('Sample editor command');
-			},
+		this.app.workspace.onLayoutReady(() => this.installHook());
+	}
+
+	onunload() {
+		this.scheduleRebuild.cancel();
+	}
+
+	private installHook() {
+		const inst = getPublishInstance(this.app);
+		if (!inst) {
+			console.warn(
+				'Publish feed: core Publish plugin unavailable; auto-update disabled. Use the "Rebuild feed" command.',
+			);
+			return;
+		}
+		this.uninstallHook = hookPublish(inst, () => {
+			if (this.settings.autoPush) this.scheduleRebuild();
 		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+		this.register(this.uninstallHook);
+	}
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			},
-		});
+	refreshDebounce() {
+		this.scheduleRebuild.cancel();
+		this.scheduleRebuild = this.makeDebounce();
+	}
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(activeDocument, 'click', (_evt: MouseEvent) => {
-			new Notice('Click');
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000),
+	private makeDebounce() {
+		return debounce(
+			() => void this.rebuild(false),
+			(this.settings?.debounceSeconds ?? 10) * 1000,
+			true,
 		);
 	}
 
-	onunload() {}
+	/** Builds the feed and pushes it. `manual` runs report their outcome in a notice. */
+	async rebuild(manual: boolean) {
+		if (this.running) {
+			this.rerun = true;
+			return;
+		}
+		this.running = true;
+		try {
+			const result = await this.buildAndPush();
+			if (manual) new Notice(`Publish feed: ${result}`);
+		} catch (e) {
+			console.error('Publish feed:', e);
+			new Notice(`Publish feed failed: ${e instanceof Error ? e.message : String(e)}`);
+		} finally {
+			this.running = false;
+			if (this.rerun) {
+				this.rerun = false;
+				void this.rebuild(false);
+			}
+		}
+	}
+
+	private async buildAndPush(): Promise<string> {
+		const s = this.settings;
+		const inst: PublishInstance | null = getPublishInstance(this.app);
+		if (!inst) throw new Error('Publish is not enabled or not configured');
+		const token = s.tokenSecretName
+			? this.app.secretStorage.getSecret(s.tokenSecretName)
+			: null;
+		if (!token) throw new Error('No GitHub token configured');
+		if (!s.githubOwner || !s.githubRepo) {
+			throw new Error('GitHub owner and repository are required');
+		}
+
+		const siteUrl = s.siteUrl || `https://${inst.host}`;
+		const files = parsePublishList(await inst.apiList());
+		const entries = await buildEntries(files, {
+			siteUrl,
+			maxEntries: s.maxEntries,
+			resolve: vaultMetaResolver(this.app),
+		});
+		const xml = buildAtom(
+			{ title: s.feedTitle, siteUrl, feedUrl: feedUrl(s) },
+			entries,
+		);
+		const outcome = await pushFile(
+			{
+				token,
+				owner: s.githubOwner,
+				repo: s.githubRepo,
+				branch: s.githubBranch,
+				path: s.feedPath,
+			},
+			xml,
+			'Update feed',
+		);
+		return `${outcome} (${entries.length} entries)`;
+	}
 
 	async loadSettings() {
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MyPluginSettings>,
+			(await this.loadData()) as Partial<FeedSettings>,
 		);
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
 	}
 }

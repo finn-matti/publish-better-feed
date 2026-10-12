@@ -1,11 +1,9 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
-	"minAppVersion": "1.0.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"id": "better-publish-feed",
+	"name": "Better Publish Feed",
+	"version": "0.1.0",
+	"minAppVersion": "1.11.4",
+	"description": "Generates an Atom feed of recent changes for your Obsidian Publish site and hosts it on GitHub Pages.",
+	"author": "Martin Hähnel",
 	"isDesktopOnly": false
 }
