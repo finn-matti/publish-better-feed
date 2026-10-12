@@ -43,7 +43,7 @@ export async function buildEntries(
 			url,
 			published: toDate(f.ctime || f.mtime),
 			updated: toDate(f.mtime || f.ctime),
-			summary: meta.summary,
+			summary: meta.summary || meta.title,
 		});
 		if (entries.length >= opts.maxEntries) break;
 	}

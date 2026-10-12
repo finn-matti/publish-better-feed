@@ -58,6 +58,17 @@ describe('buildEntries', () => {
 	});
 });
 
+describe('buildEntries summary', () => {
+	it('falls back to the title when a note has no summary', async () => {
+		const [entry] = await buildEntries([file('empty.md', 1_700_000_000_000)], {
+			siteUrl: 'https://x.test',
+			maxEntries: 5,
+			resolve: () => Promise.resolve({ title: 'Empty', summary: '' }),
+		});
+		expect(entry?.summary).toBe('Empty');
+	});
+});
+
 describe('buildAtom', () => {
 	it('escapes and is deterministic', async () => {
 		const entries = await buildEntries([file('a.md', 1_700_000_000_000)], {
