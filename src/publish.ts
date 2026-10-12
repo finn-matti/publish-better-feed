@@ -15,7 +15,7 @@ export interface PublishInstance {
 	apiList: () => Promise<unknown>;
 	apiUploadFile: (...args: unknown[]) => unknown;
 	apiRemoveFile: (...args: unknown[]) => unknown;
-	getHash?: (file: unknown) => Promise<unknown>;
+	apiDownloadFile?: (path: string) => Promise<unknown>;
 	getCurrentSlug?: () => Promise<unknown>;
 	apiCustomUrl?: () => Promise<unknown>;
 }
@@ -127,18 +127,4 @@ export async function resolveSiteUrl(inst: PublishInstance): Promise<string> {
 		// siteId is what Publish itself falls back to.
 	}
 	return `${PUBLISH_ORIGIN}/${slug}`;
-}
-
-/** True only if the local file is byte-identical to what is live, per Publish's own hash. */
-export async function matchesLive(
-	inst: PublishInstance,
-	file: unknown,
-	liveHash: string,
-): Promise<boolean> {
-	try {
-		if (typeof inst.getHash !== 'function' || !liveHash) return false;
-		return (await inst.getHash(file)) === liveHash;
-	} catch {
-		return false;
-	}
 }

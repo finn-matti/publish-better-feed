@@ -19,3 +19,8 @@ export function toBase64(bytes: Uint8Array): string {
 	}
 	return btoa(bin);
 }
+
+/** Lowercase hex SHA-256, the format Publish uses for file hashes. */
+export async function sha256Hex(bytes: BufferSource): Promise<string> {
+	return toHex(await crypto.subtle.digest('SHA-256', bytes));
+}

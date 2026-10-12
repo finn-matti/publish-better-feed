@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Atom feed of recent changes for an Obsidian Publish site: one entry per published note,
   newest first, with dates, stable ids and a summary from the `description` property or
-  the first paragraph. Text from the vault is only used for notes that match what is
-  published, so unpublished edits never reach the feed.
+  the first paragraph. Text is only taken from what is published (the local note if it
+  matches, otherwise the live copy from Publish), so unpublished edits never reach the feed.
 - Automatic update a few seconds after a publish run, by observing the core Publish plugin.
 - "Rebuild feed" command, which also picks up changes published from elsewhere.
 - Push to a GitHub repository served by GitHub Pages as `feed.atom`; no commit when the

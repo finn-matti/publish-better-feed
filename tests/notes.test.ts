@@ -1,54 +1,36 @@
-import type { App } from 'obsidian';
-import { describe, expect, it } from 'vitest';
-import { vaultMetaResolver } from '../src/notes';
+import { describe, expect, it, vi } from 'vitest';
+import { metaResolver } from '../src/notes';
 
-interface Note {
-	frontmatter?: Record<string, unknown>;
-	content?: string;
-	readFails?: boolean;
-}
+const live = (path: string) => ({ path, hash: 'h', ctime: 1, mtime: 1, size: 1 });
+const text = (t: string | null) => () => Promise.resolve(t);
 
-function fakeApp(notes: Record<string, Note>): App {
-	return {
-		vault: {
-			getFileByPath: (p: string) => (p in notes ? { path: p } : null),
-			cachedRead: (f: { path: string }) => {
-				const n = notes[f.path]!;
-				return n.readFails ? Promise.reject(new Error('read')) : Promise.resolve(n.content ?? '');
-			},
-		},
-		metadataCache: {
-			getFileCache: (f: { path: string }) => ({ frontmatter: notes[f.path]!.frontmatter }),
-		},
-	} as unknown as App;
-}
+// Just enough YAML for `key: value` lines; the real parser is Obsidian's parseYaml.
+const parseYaml = (yaml: string) =>
+	Object.fromEntries(
+		yaml.split('\n').map((l) => {
+			const i = l.indexOf(':');
+			return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
+		}),
+	);
 
-const live = (path: string, hash = 'live') => ({ path, hash, ctime: 1, mtime: 1, size: 1 });
-const always = () => Promise.resolve(true);
-
-describe('vaultMetaResolver', () => {
-	it('uses the basename and no summary for a note missing locally', async () => {
-		const resolve = vaultMetaResolver(fakeApp({}), always);
+describe('metaResolver', () => {
+	it('uses the file name and no summary when there is no published text', async () => {
+		const resolve = metaResolver(text(null), parseYaml);
 		expect(await resolve(live('Folder/Gone.md'))).toEqual({ title: 'Gone', summary: '' });
 	});
 
 	it('prefers frontmatter title and description', async () => {
-		const resolve = vaultMetaResolver(
-			fakeApp({
-				'a.md': {
-					frontmatter: { title: 'Nice title', description: 'Short.' },
-					content: 'Body text that is ignored.',
-				},
-			}),
-			always,
+		const resolve = metaResolver(
+			text('---\ntitle: Nice title\ndescription: Short.\n---\nBody that is ignored.'),
+			parseYaml,
 		);
 		expect(await resolve(live('a.md'))).toEqual({ title: 'Nice title', summary: 'Short.' });
 	});
 
-	it('falls back to the basename and the first paragraph', async () => {
-		const resolve = vaultMetaResolver(
-			fakeApp({ 'Sub/Note.md': { content: '# Heading\n\nFirst **paragraph** here.\n\nSecond.' } }),
-			always,
+	it('falls back to the file name and the first paragraph', async () => {
+		const resolve = metaResolver(
+			text('# Heading\n\nFirst **paragraph** here.\n\nSecond.'),
+			parseYaml,
 		);
 		expect(await resolve(live('Sub/Note.md'))).toEqual({
 			title: 'Note',
@@ -56,34 +38,33 @@ describe('vaultMetaResolver', () => {
 		});
 	});
 
-	it('ignores blank frontmatter values and survives a failed read', async () => {
-		const resolve = vaultMetaResolver(
-			fakeApp({ 'b.md': { frontmatter: { title: '  ', description: 42 }, readFails: true } }),
-			always,
+	it('handles a BOM and CRLF line endings', async () => {
+		const resolve = metaResolver(
+			text('\uFEFF---\r\ndescription: From CRLF.\r\n---\r\nBody.'),
+			parseYaml,
 		);
-		expect(await resolve(live('b.md'))).toEqual({ title: 'b', summary: '' });
+		expect((await resolve(live('a.md'))).summary).toBe('From CRLF.');
 	});
 
-	it('never uses local text when the file differs from what is live', async () => {
-		const resolve = vaultMetaResolver(
-			fakeApp({
-				'draft.md': {
-					frontmatter: { title: 'Unpublished title', description: 'Unpublished text.' },
-					content: 'Embarrassing unpublished paragraph.',
-				},
-			}),
-			() => Promise.resolve(false),
-		);
-		expect(await resolve(live('draft.md'))).toEqual({ title: 'draft', summary: '' });
+	it('ignores blank and non-string values', async () => {
+		const resolve = metaResolver(text('---\nx\n---\nBody text.'), () => ({
+			title: '  ',
+			description: 42,
+		}));
+		expect(await resolve(live('b.md'))).toEqual({ title: 'b', summary: 'Body text.' });
 	});
 
-	it('asks with the local file and the live hash', async () => {
-		const asked: Array<[unknown, string]> = [];
-		const resolve = vaultMetaResolver(fakeApp({ 'a.md': { content: 'x' } }), (file, hash) => {
-			asked.push([file, hash]);
-			return Promise.resolve(true);
+	it('survives invalid frontmatter', async () => {
+		const resolve = metaResolver(text('---\n: : :\n---\nBody text.'), () => {
+			throw new Error('bad yaml');
 		});
-		await resolve(live('a.md', 'abc'));
-		expect(asked).toEqual([[{ path: 'a.md' }, 'abc']]);
+		expect(await resolve(live('c.md'))).toEqual({ title: 'c', summary: 'Body text.' });
+	});
+
+	it('asks for the text of the file it resolves', async () => {
+		const getText = vi.fn(() => Promise.resolve('x'));
+		const file = live('a.md');
+		await metaResolver(getText, parseYaml)(file);
+		expect(getText).toHaveBeenCalledWith(file);
 	});
 });

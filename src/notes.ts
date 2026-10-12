@@ -1,4 +1,3 @@
-import type { App, TFile } from 'obsidian';
 import type { PublishFile } from './publish';
 
 export interface NoteMeta {
@@ -8,8 +7,8 @@ export interface NoteMeta {
 
 export type MetaResolver = (file: PublishFile) => Promise<NoteMeta>;
 
-/** Does the local file equal what is live? Local text must never reach the feed otherwise. */
-export type IsLive = (file: TFile, liveHash: string) => Promise<boolean>;
+/** Verified published text of a note, or null if unavailable. */
+export type LiveText = (file: PublishFile) => Promise<string | null>;
 
 const SUMMARY_MAX = 300;
 
@@ -35,25 +34,33 @@ export function firstParagraph(markdown: string): string {
 const str = (v: unknown): string | undefined =>
 	typeof v === 'string' && v.trim() ? v.trim() : undefined;
 
-export function vaultMetaResolver(app: App, isLive: IsLive): MetaResolver {
-	return async (live) => {
-		const basename = live.path.replace(/^.*\//, '').replace(/\.md$/i, '');
-		const file = app.vault.getFileByPath(live.path);
-		if (!file || !(await isLive(file, live.hash))) {
-			return { title: basename, summary: '' };
-		}
-		const fm = (app.metadataCache.getFileCache(file)?.frontmatter ??
-			{}) as Record<string, unknown>;
-		const summary =
-			str(fm.description) ?? firstParagraph(await readNote(app, file));
-		return { title: str(fm.title) ?? basename, summary };
-	};
+function frontmatter(
+	text: string,
+	parseYaml: (yaml: string) => unknown,
+): Record<string, unknown> {
+	const m = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
+	if (!m) return {};
+	try {
+		const fm = parseYaml(m[1] ?? '');
+		return typeof fm === 'object' && fm !== null ? (fm as Record<string, unknown>) : {};
+	} catch {
+		return {};
+	}
 }
 
-async function readNote(app: App, file: TFile): Promise<string> {
-	try {
-		return await app.vault.cachedRead(file);
-	} catch {
-		return '';
-	}
+/** Title and summary from published text; without text, the file name and no summary. */
+export function metaResolver(
+	getLiveText: LiveText,
+	parseYaml: (yaml: string) => unknown,
+): MetaResolver {
+	return async (live) => {
+		const basename = live.path.replace(/^.*\//, '').replace(/\.md$/i, '');
+		const text = await getLiveText(live);
+		if (text === null) return { title: basename, summary: '' };
+		const fm = frontmatter(text, parseYaml);
+		return {
+			title: str(fm.title) ?? basename,
+			summary: str(fm.description) ?? firstParagraph(text),
+		};
+	};
 }

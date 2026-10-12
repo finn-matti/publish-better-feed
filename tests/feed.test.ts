@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildEntries, noteUrl } from '../src/entries';
 import { buildAtom } from '../src/feed';
-import { gitBlobSha } from '../src/hash';
+import { gitBlobSha, sha256Hex } from '../src/hash';
 import { firstParagraph } from '../src/notes';
 import { hookPublish, parsePublishList, resolveSiteUrl } from '../src/publish';
 import { mockPublish } from './mock-publish';
@@ -97,6 +97,14 @@ describe('gitBlobSha', () => {
 	it('matches git hash-object', async () => {
 		expect(await gitBlobSha(new TextEncoder().encode('hello\n'))).toBe(
 			'ce013625030ba8dba906f756967f9e9ca394464a',
+		);
+	});
+});
+
+describe('sha256Hex', () => {
+	it('returns lowercase hex like Publish', async () => {
+		expect(await sha256Hex(new TextEncoder().encode('abc'))).toBe(
+			'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
 		);
 	});
 });

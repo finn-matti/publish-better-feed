@@ -7,7 +7,7 @@ export function mockPublish(files: PublishFile[] = []) {
 		calls,
 		siteId: 'abc123',
 		host: 'publish.obsidian.md',
-		getHash: (f: unknown) => Promise.resolve(`hash-of-${(f as { path: string }).path}`),
+		apiDownloadFile: () => Promise.resolve(new TextEncoder().encode('Something broke!').buffer),
 		getCurrentSlug: () => Promise.resolve('my-slug'),
 		apiCustomUrl: () => Promise.resolve({}) as Promise<unknown>,
 		apiList: () => Promise.resolve({ owner: 'o', files }),

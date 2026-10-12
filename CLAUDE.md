@@ -35,7 +35,8 @@ testable without Obsidian.
 | `apiList()` | `{ owner, files: [{ path, hash, ctime, mtime, size }] }`; times are server-side publish times in ms, `ctime` = `mtime` on first publish |
 | `apiUploadFile(file: TFile)` | every upload: dialog, file menu and "publish current file" (both call `uploadFile()`, which opens the dialog's upload section), CLI handlers |
 | `apiRemoveFile(path)` | unpublish and delete |
-| `getHash(file)` | async; SHA-256 of raw bytes, equals the `apiList()` hash after publishing |
+| `apiDownloadFile(path)` | async; live file as `ArrayBuffer`, see Rules |
+| `getHash(file)` | async; SHA-256 hex of the file's raw bytes, equals the `apiList()` hash after publishing |
 | `getPublishFlag(file)`, `includes`, `excludes` | publish rules |
 | `scanForChanges()` | same diff the Publish dialog shows |
 
@@ -56,8 +57,10 @@ then grep `app.js` (identifiers are minified, property and string names are not)
 - Never read or handle the account token. All Publish calls go through the instance.
 - Guard every internal access (existence and type checks). If the shape changes, disable
   the hook; "Rebuild feed" must keep working.
-- Feed content must be published content: local text (frontmatter title, summary) is used only
-  when `getHash(file)` equals the live hash from `apiList()`. Otherwise use the file name and no summary.
+- Feed content must be published content: use text only if its SHA-256 (lowercase hex) equals the
+  live hash from `apiList()`, read locally or via `apiDownloadFile(path)`. Otherwise use the file name
+  and no summary. `apiDownloadFile` returns an `ArrayBuffer` and never throws; on a server error it
+  returns the error body ("Something broke!"), so always verify.
 - An automatic run with zero entries must not push (a bad `apiList()` would wipe the feed).
 - No Node APIs: `requestUrl` and `crypto.subtle`, so it works on mobile.
 - The GitHub token lives in SecretStorage (since 1.11.4, hence `minAppVersion`); settings
