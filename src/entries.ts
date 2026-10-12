@@ -1,6 +1,7 @@
 import type { PublishFile } from './publish';
 import type { MetaResolver } from './notes';
 import { surfaceTime } from './state';
+import { pageUrl } from './urls';
 
 export interface FeedEntry {
 	id: string;
@@ -17,14 +18,6 @@ export interface FeedEntry {
 const toDate = (ts: number): Date => new Date(ts < 1e11 ? ts * 1000 : ts);
 
 /** Same page URL Publish builds: `+` for spaces, each segment URI-encoded. */
-export function noteUrl(siteUrl: string, path: string): string {
-	const slug = path
-		.replace(/\.md$/i, '')
-		.split('/')
-		.map((seg) => encodeURIComponent(seg).replace(/%20/g, '+'))
-		.join('/');
-	return `${siteUrl.replace(/\/+$/, '')}/${slug}`;
-}
 
 /**
  * One entry per published note. `updated` is when it last surfaced: the latest publish time,
@@ -43,7 +36,7 @@ export async function buildEntries(
 	const notes = files
 		.filter((f) => /\.md$/i.test(f.path))
 		.map((f) => {
-			const url = noteUrl(opts.siteUrl, f.path);
+			const url = pageUrl(opts.siteUrl, f.path);
 			const publishedAt = toDate(f.mtime || f.ctime);
 			const updated = surfaceTime(publishedAt, opts.previous?.get(url), opts.cooldownMs ?? 0);
 			return { f, url, updated, publishedAt };

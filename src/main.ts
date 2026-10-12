@@ -6,6 +6,7 @@ import { metaResolver } from './notes';
 import { getPublishInstance, hookPublish } from './publish';
 import { createRenderer } from './render';
 import { FeedService } from './service';
+import { assetBase } from './urls';
 import { FeedSettingTab } from './settings';
 import { DEFAULT_SETTINGS, type FeedSettings } from './settings-model';
 
@@ -28,7 +29,7 @@ export default class FeedPlugin extends Plugin {
 				const render = full
 					? createRenderer({
 							siteUrl,
-							assetBase: `https://${inst.host}/access/${encodeURIComponent(inst.siteId)}`,
+							assetBase: assetBase(inst.host, inst.siteId),
 							files: files.map((f) => f.path),
 						})
 					: undefined;

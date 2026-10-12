@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildEntries, noteUrl } from '../src/entries';
+import { buildEntries } from '../src/entries';
 import { buildAtom } from '../src/feed';
 import { gitBlobSha, sha256Hex } from '../src/hash';
 import { firstParagraph } from '../src/notes';
@@ -12,15 +12,6 @@ const file = (path: string, mtime: number, ctime = mtime) => ({
 	ctime,
 	mtime,
 	size: 1,
-});
-
-describe('noteUrl', () => {
-	it('uses + for spaces, encodes the rest, keeps folders', () => {
-		expect(noteUrl('https://x.test/s/', 'Sub dir/My Note.md')).toBe(
-			'https://x.test/s/Sub+dir/My+Note',
-		);
-		expect(noteUrl('https://x.test', 'a+b&c.md')).toBe('https://x.test/a%2Bb%26c');
-	});
 });
 
 describe('resolveSiteUrl', () => {

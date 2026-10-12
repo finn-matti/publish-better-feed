@@ -13,7 +13,7 @@ import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { mathFromMarkdown } from 'mdast-util-math';
 import { gfm } from 'micromark-extension-gfm';
 import { math } from 'micromark-extension-math';
-import { noteUrl } from './entries';
+import { assetUrl, pageUrl } from './urls';
 
 export interface RenderContext {
 	/** Public base URL of the site, as in page URLs. */
@@ -63,8 +63,7 @@ const SIZE = /^\d+(x\d+)?$/;
 /** Published text becomes HTML. Links and embeds only ever point at published files. */
 export function createRenderer(ctx: RenderContext): Renderer {
 	const idx = buildIndex(ctx.files);
-	const asset = (path: string) =>
-		`${ctx.assetBase}/${path.split('/').map(encodeURIComponent).join('/')}`;
+	const asset = (path: string) => assetUrl(ctx.assetBase, path);
 
 	return (markdown, notePath, title) => {
 		const tree = fromMarkdown(markdown.replace(FRONTMATTER, ''), {
@@ -190,12 +189,12 @@ export function createRenderer(ctx: RenderContext): Renderer {
 				if (h) props.height = h;
 				return [{ type: 'image', url: asset(target), alt, data: { hProperties: props } }];
 			}
-			const url = NOTE.test(target) ? noteUrl(ctx.siteUrl, target) : asset(target);
+			const url = NOTE.test(target) ? pageUrl(ctx.siteUrl, target) : asset(target);
 			return [{ type: 'link', url, children: [text(alt)] }];
 		}
 		const label = alias || (path ? (heading ? `${path} > ${heading}` : path) : heading);
 		if (!target) return [text(label)];
-		const url = NOTE.test(target) ? noteUrl(ctx.siteUrl, target) + fragment : asset(target);
+		const url = NOTE.test(target) ? pageUrl(ctx.siteUrl, target) + fragment : asset(target);
 		return [{ type: 'link', url, children: [text(label)] }];
 	}
 
@@ -206,7 +205,7 @@ export function createRenderer(ctx: RenderContext): Renderer {
 		if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('//')) return null;
 		const [pathPart = '', frag] = url.split('#') as [string, string?];
 		const hash = frag ? `#${frag}` : '';
-		if (!pathPart) return isImage ? null : noteUrl(ctx.siteUrl, notePath) + hash;
+		if (!pathPart) return isImage ? null : pageUrl(ctx.siteUrl, notePath) + hash;
 		let decoded = pathPart;
 		try {
 			decoded = decodeURIComponent(pathPart);
@@ -215,7 +214,7 @@ export function createRenderer(ctx: RenderContext): Renderer {
 		}
 		const target = idx.exact(decoded, notePath);
 		if (!target) return null;
-		if (NOTE.test(target)) return isImage ? null : noteUrl(ctx.siteUrl, target) + hash;
+		if (NOTE.test(target)) return isImage ? null : pageUrl(ctx.siteUrl, target) + hash;
 		return asset(target);
 	}
 }
