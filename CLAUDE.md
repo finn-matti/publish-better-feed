@@ -76,6 +76,7 @@ commitlint in a husky hook and in CI. A single short subject line: no body, no t
 no attribution, unless explicitly asked. Default branch is `main`.
 
 Run `npm run lint`, `build` and `test` before committing.
+Add user-visible changes to `CHANGELOG.md` under `[Unreleased]` ([Keep a Changelog](https://keepachangelog.com/en/1.0.0/)).
 
 ## Testing
 
