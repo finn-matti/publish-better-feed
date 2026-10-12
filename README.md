@@ -13,8 +13,6 @@ summaries and lists oldest first. This plugin builds a proper feed instead.
    summary from the `description` property or the first paragraph).
 3. It pushes `feed.xml` to a GitHub repository served by GitHub Pages.
 
-Add `feed: skip` to a note's properties to leave it out of the feed.
-
 Not supported: changes published from elsewhere (the `ob` CLI or another
 device). Run **Rebuild feed** to pick them up.
 
@@ -23,8 +21,8 @@ device). Run **Rebuild feed** to pick them up.
 1. Create a repository with GitHub Pages enabled.
 2. Create a fine-grained personal access token limited to that repository with
    **Contents: read and write**.
-3. In the plugin settings, enter owner, repository, branch and site URL, and
-   pick or create a secret for the token.
+3. In the plugin settings, enter owner, repository and branch, and pick or
+   create a secret for the token. The site URL comes from Publish itself.
 4. Subscribe to `https://<owner>.github.io/<repo>/feed.xml`.
 
 ## Security

@@ -7,6 +7,8 @@ export function mockPublish(files: PublishFile[] = []) {
 		calls,
 		siteId: 'abc123',
 		host: 'publish.obsidian.md',
+		getCurrentSlug: () => Promise.resolve('my-slug'),
+		apiCustomUrl: () => Promise.resolve({}) as Promise<unknown>,
 		apiList: () => Promise.resolve({ owner: 'o', files }),
 		apiUploadFile: (f: unknown) => {
 			calls.push(`upload:${String(f)}`);

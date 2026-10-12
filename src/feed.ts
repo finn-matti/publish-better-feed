@@ -4,6 +4,7 @@ export interface FeedMeta {
 	title: string;
 	siteUrl: string;
 	feedUrl: string;
+	author: string;
 }
 
 const escapeXml = (s: string) =>
@@ -27,6 +28,7 @@ export function buildAtom(meta: FeedMeta, entries: FeedEntry[]): string {
 		`  <id>${escapeXml(meta.feedUrl)}</id>`,
 		`  <title>${escapeXml(meta.title)}</title>`,
 		`  <updated>${updated.toISOString()}</updated>`,
+		`  <author><name>${escapeXml(meta.author)}</name></author>`,
 		`  <link rel="self" type="application/atom+xml" href="${escapeXml(meta.feedUrl)}"/>`,
 		`  <link rel="alternate" type="text/html" href="${escapeXml(meta.siteUrl)}"/>`,
 	];

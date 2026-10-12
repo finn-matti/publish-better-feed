@@ -13,19 +13,15 @@ export interface FeedEntry {
 /** Publish timestamps are assumed to be epoch ms; tolerate seconds. */
 const toDate = (ts: number): Date => new Date(ts < 1e11 ? ts * 1000 : ts);
 
-export function noteUrl(
-	siteUrl: string,
-	path: string,
-	permalink?: string,
-): string {
-	const base = siteUrl.replace(/\/+$/, '');
-	const slug = permalink
-		? permalink.replace(/^\/+/, '')
-		: path.replace(/\.md$/i, '').replace(/ /g, '+');
-	return `${base}/${slug.split('/').map(encodeSegment).join('/')}`;
+/** Same page URL Publish builds: `+` for spaces, each segment URI-encoded. */
+export function noteUrl(siteUrl: string, path: string): string {
+	const slug = path
+		.replace(/\.md$/i, '')
+		.split('/')
+		.map((seg) => encodeURIComponent(seg).replace(/%20/g, '+'))
+		.join('/');
+	return `${siteUrl.replace(/\/+$/, '')}/${slug}`;
 }
-
-const encodeSegment = (s: string) => encodeURIComponent(s).replace(/%2B/g, '+');
 
 /** One entry per published note; `updated` follows the live mtime. */
 export async function buildEntries(
@@ -40,8 +36,7 @@ export async function buildEntries(
 	const entries: FeedEntry[] = [];
 	for (const f of notes) {
 		const meta = await opts.resolve(f.path);
-		if (meta.skip) continue;
-		const url = noteUrl(opts.siteUrl, f.path, meta.permalink);
+		const url = noteUrl(opts.siteUrl, f.path);
 		entries.push({
 			id: url,
 			title: meta.title,

@@ -7,6 +7,7 @@ import {
 	getPublishInstance,
 	hookPublish,
 	parsePublishList,
+	resolveSiteUrl,
 	type PublishInstance,
 } from './publish';
 import {
@@ -99,7 +100,7 @@ export default class FeedPlugin extends Plugin {
 			throw new Error('GitHub owner and repository are required');
 		}
 
-		const siteUrl = s.siteUrl || `https://${inst.host}`;
+		const siteUrl = await resolveSiteUrl(inst);
 		const files = parsePublishList(await inst.apiList());
 		const entries = await buildEntries(files, {
 			siteUrl,
@@ -107,7 +108,12 @@ export default class FeedPlugin extends Plugin {
 			resolve: vaultMetaResolver(this.app),
 		});
 		const xml = buildAtom(
-			{ title: s.feedTitle, siteUrl, feedUrl: feedUrl(s) },
+			{
+				title: s.feedTitle,
+				siteUrl,
+				feedUrl: feedUrl(s),
+				author: s.feedAuthor || s.feedTitle,
+			},
 			entries,
 		);
 		const outcome = await pushFile(

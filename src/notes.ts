@@ -3,8 +3,6 @@ import type { App, TFile } from 'obsidian';
 export interface NoteMeta {
 	title: string;
 	summary: string;
-	skip: boolean;
-	permalink?: string;
 }
 
 export type MetaResolver = (path: string) => Promise<NoteMeta>;
@@ -37,7 +35,7 @@ export function vaultMetaResolver(app: App): MetaResolver {
 	return async (path) => {
 		const basename = path.replace(/^.*\//, '').replace(/\.md$/i, '');
 		const file = app.vault.getFileByPath(path);
-		if (!file) return { title: basename, summary: '', skip: false };
+		if (!file) return { title: basename, summary: '' };
 		const fm = (app.metadataCache.getFileCache(file)?.frontmatter ??
 			{}) as Record<string, unknown>;
 		const summary =
@@ -45,8 +43,6 @@ export function vaultMetaResolver(app: App): MetaResolver {
 		return {
 			title: str(fm.title) ?? basename,
 			summary,
-			skip: typeof fm.feed === 'string' && fm.feed.toLowerCase() === 'skip',
-			permalink: str(fm.permalink),
 		};
 	};
 }

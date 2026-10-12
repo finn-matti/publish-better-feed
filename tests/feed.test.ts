@@ -3,7 +3,7 @@ import { buildEntries, noteUrl } from '../src/entries';
 import { buildAtom } from '../src/feed';
 import { gitBlobSha } from '../src/hash';
 import { firstParagraph } from '../src/notes';
-import { hookPublish, parsePublishList } from '../src/publish';
+import { hookPublish, parsePublishList, resolveSiteUrl } from '../src/publish';
 import { mockPublish } from './mock-publish';
 
 const file = (path: string, mtime: number, ctime = mtime) => ({
@@ -15,30 +15,43 @@ const file = (path: string, mtime: number, ctime = mtime) => ({
 });
 
 describe('noteUrl', () => {
-	it('uses + for spaces and keeps folders', () => {
+	it('uses + for spaces, encodes the rest, keeps folders', () => {
 		expect(noteUrl('https://x.test/s/', 'Sub dir/My Note.md')).toBe(
 			'https://x.test/s/Sub+dir/My+Note',
 		);
+		expect(noteUrl('https://x.test', 'a+b&c.md')).toBe('https://x.test/a%2Bb%26c');
 	});
-	it('honors permalink', () => {
-		expect(noteUrl('https://x.test', 'a.md', '/custom')).toBe('https://x.test/custom');
+});
+
+describe('resolveSiteUrl', () => {
+	it('uses the slug on publish.obsidian.md', async () => {
+		expect(await resolveSiteUrl(mockPublish())).toBe('https://publish.obsidian.md/my-slug');
+	});
+	it('prefers a custom domain and adds a scheme', async () => {
+		const inst = mockPublish();
+		inst.apiCustomUrl = () => Promise.resolve({ url: 'notes.example.com/' });
+		expect(await resolveSiteUrl(inst)).toBe('https://notes.example.com');
+	});
+	it('falls back to siteId when lookups fail', async () => {
+		const inst = mockPublish();
+		inst.apiCustomUrl = () => Promise.reject(new Error('offline'));
+		inst.getCurrentSlug = () => Promise.reject(new Error('offline'));
+		expect(await resolveSiteUrl(inst)).toBe('https://publish.obsidian.md/abc123');
 	});
 });
 
 describe('buildEntries', () => {
-	it('sorts newest first, skips non-notes and feed: skip', async () => {
+	it('sorts newest first and skips non-notes', async () => {
 		const entries = await buildEntries(
 			[
 				file('old.md', 1_700_000_000_000),
 				file('img.png', 1_900_000_000_000),
-				file('hidden.md', 1_800_000_000_000),
 				file('new.md', 1_750_000_000_000),
 			],
 			{
 				siteUrl: 'https://x.test',
 				maxEntries: 10,
-				resolve: (p) =>
-					Promise.resolve({ title: p, summary: '', skip: p === 'hidden.md' }),
+				resolve: (p) => Promise.resolve({ title: p, summary: '' }),
 			},
 		);
 		expect(entries.map((e) => e.title)).toEqual(['new.md', 'old.md']);
@@ -51,10 +64,11 @@ describe('buildAtom', () => {
 			siteUrl: 'https://x.test',
 			maxEntries: 5,
 			resolve: () =>
-				Promise.resolve({ title: 'A & <B>', summary: 'say "hi"', skip: false }),
+				Promise.resolve({ title: 'A & <B>', summary: 'say "hi"' }),
 		});
-		const meta = { title: 'T', siteUrl: 'https://x.test', feedUrl: 'https://x.test/f.xml' };
+		const meta = { title: 'T', siteUrl: 'https://x.test', feedUrl: 'https://x.test/f.xml', author: 'Me' };
 		const xml = buildAtom(meta, entries);
+		expect(xml).toContain('<author><name>Me</name></author>');
 		expect(xml).toContain('<title>A &amp; &lt;B&gt;</title>');
 		expect(xml).toContain('say &quot;hi&quot;');
 		expect(buildAtom(meta, entries)).toBe(xml);

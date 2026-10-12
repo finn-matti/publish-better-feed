@@ -7,6 +7,8 @@
 	inst.siteId = 'fake-site';
 	inst.host = 'publish.example.test';
 	const published = new Map(); // path -> { ctime, mtime }
+	inst.getCurrentSlug = async () => 'fake-slug';
+	inst.apiCustomUrl = async () => ({});
 	inst.apiList = async () => ({
 		owner: 'fake',
 		files: [...published].map(([path, t]) => ({ path, hash: '', size: 1, ...t })),

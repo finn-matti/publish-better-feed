@@ -8,8 +8,8 @@ export interface FeedSettings {
 	feedPath: string;
 	/** Name of the secret in Obsidian's secret storage, not the token itself. */
 	tokenSecretName: string;
-	siteUrl: string;
 	feedTitle: string;
+	feedAuthor: string;
 	maxEntries: number;
 	autoPush: boolean;
 	debounceSeconds: number;
@@ -21,8 +21,8 @@ export const DEFAULT_SETTINGS: FeedSettings = {
 	githubBranch: 'main',
 	feedPath: 'feed.xml',
 	tokenSecretName: '',
-	siteUrl: '',
 	feedTitle: 'Recent changes',
+	feedAuthor: '',
 	maxEntries: 50,
 	autoPush: true,
 	debounceSeconds: 10,
@@ -51,7 +51,7 @@ export class FeedSettingTab extends PluginSettingTab {
 		const text = (
 			name: string,
 			desc: string,
-			key: 'githubOwner' | 'githubRepo' | 'githubBranch' | 'feedPath' | 'siteUrl' | 'feedTitle',
+			key: 'githubOwner' | 'githubRepo' | 'githubBranch' | 'feedPath' | 'feedTitle' | 'feedAuthor',
 			placeholder = '',
 		) =>
 			new Setting(containerEl)
@@ -70,10 +70,9 @@ export class FeedSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName('Feed').setHeading();
 		text('Feed title', '', 'feedTitle');
 		text(
-			'Site URL',
-			'Public base URL of your Publish site. Used for entry links.',
-			'siteUrl',
-			'https://publish.obsidian.md/your-site',
+			'Author',
+			'Author name shown in feed readers. Defaults to the feed title.',
+			'feedAuthor',
 		);
 		new Setting(containerEl)
 			.setName('Maximum entries')

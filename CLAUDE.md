@@ -23,10 +23,12 @@ types (xml/json), so we don't upload the feed to Publish. We host it externally.
 
 | Member | Notes |
 | --- | --- |
-| `siteId`, `host` | null if no site configured |
+| `siteId`, `host` | null if no site configured. `host` is the API server, not the site URL |
 | `includes`, `excludes` | folder rules |
 | `getPublishFlag(file)` | true / false / null: frontmatter `publish`, then excludes, then includes |
 | `getHash(file)` | SHA-256 of raw bytes (metadata cache or computed) |
+| `getCurrentSlug()` | async; site slug (`https://publish.obsidian.md/<slug>`), falls back to `siteId` |
+| `apiCustomUrl()` | async; `{ url }` when a custom domain is set (network call via Publish) |
 | `apiList()` | `{ owner, files: [{ path, hash, ctime, mtime, size }] }` |
 | `apiUploadFile(file: TFile)` | used by the dialog, the "publish current file" command, the file menu and this instance's own CLI handler (not the external `ob` CLI, see Out of scope) |
 | `apiRemoveFile(path)` | used for unpublish and delete |

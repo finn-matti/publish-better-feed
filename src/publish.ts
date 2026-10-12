@@ -15,7 +15,11 @@ export interface PublishInstance {
 	apiList: () => Promise<unknown>;
 	apiUploadFile: (...args: unknown[]) => unknown;
 	apiRemoveFile: (...args: unknown[]) => unknown;
+	getCurrentSlug?: () => Promise<unknown>;
+	apiCustomUrl?: () => Promise<unknown>;
 }
+
+const PUBLISH_ORIGIN = 'https://publish.obsidian.md';
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
 	typeof v === 'object' && v !== null;
@@ -93,4 +97,33 @@ export function hookPublish(
 		apiUploadFile: wrap,
 		apiRemoveFile: wrap,
 	});
+}
+
+/**
+ * Public base URL of the site, as Publish itself builds it: the custom domain
+ * if one is set, else `https://publish.obsidian.md/<slug>`.
+ */
+export async function resolveSiteUrl(inst: PublishInstance): Promise<string> {
+	try {
+		if (typeof inst.apiCustomUrl === 'function') {
+			const res: unknown = await inst.apiCustomUrl();
+			const custom = isRecord(res) ? res.url : undefined;
+			if (typeof custom === 'string' && custom.trim()) {
+				const url = custom.trim().replace(/\/+$/, '');
+				return /^https?:\/\//.test(url) ? url : `https://${url}`;
+			}
+		}
+	} catch {
+		// Fall through to the default Publish URL.
+	}
+	let slug = inst.siteId;
+	try {
+		if (typeof inst.getCurrentSlug === 'function') {
+			const s: unknown = await inst.getCurrentSlug();
+			if (typeof s === 'string' && s) slug = s;
+		}
+	} catch {
+		// siteId is what Publish itself falls back to.
+	}
+	return `${PUBLISH_ORIGIN}/${slug}`;
 }
