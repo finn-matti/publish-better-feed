@@ -17,6 +17,7 @@ import {
 	type FeedSettings,
 } from './settings';
 
+// lol
 export default class FeedPlugin extends Plugin {
 	settings!: FeedSettings;
 	private uninstallHook: (() => void) | null = null;
@@ -78,7 +79,9 @@ export default class FeedPlugin extends Plugin {
 			if (manual) new Notice(`Publish feed: ${result}`);
 		} catch (e) {
 			console.error('Publish feed:', e);
-			new Notice(`Publish feed failed: ${e instanceof Error ? e.message : String(e)}`);
+			new Notice(
+				`Publish feed failed: ${e instanceof Error ? e.message : String(e)}`,
+			);
 		} finally {
 			this.running = false;
 			if (this.rerun) {

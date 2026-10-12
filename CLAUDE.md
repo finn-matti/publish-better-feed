@@ -76,6 +76,11 @@ attribution lines, unless explicitly asked for.
 
 ## Testing
 
+Manual loop: `~/Local/Obsidian/TESTVAULT` has this repo symlinked as the plugin and the
+community Hot Reload plugin installed. Run `npm run dev`, paste `dev/fake-publish.js` in
+the Obsidian console once per session (before the plugin loads), and edits reload live.
+Re-pasting the snippet empties the fake's published list.
+
 - No Publish trial. Develop against a mock instance with the shape above.
   Use the open-source `obsidianmd/obsidian-help` vault as realistic content.
 - Things to verify with a real subscription (7-day refund deletes the site):
