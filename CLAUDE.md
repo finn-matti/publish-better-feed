@@ -52,10 +52,13 @@ Publish emits no events: wrap `apiUploadFile` and `apiRemoveFile` with `monkey-a
 
 URLs as Publish builds them: site = `https://publish.obsidian.md/<slug>` (or the custom
 domain, no slug); page = site + `/` + path without `.md`, each segment
-`encodeURIComponent` with `%20` replaced by `+`. The live site replaces the path with the target's
-frontmatter `permalink` (read from `cache/<uid>`, unencoded; we encode each segment); the dialog's
-"open in live site" ignores it. We do the same in links and entries (`permalinks.ts`, `urls.ts`), but the
-entry `id` stays path-based because an Atom id must never change. Wikilinks resolve as in the app (`getLinkpathDest`) over the published file set.
+`encodeURIComponent` with `%20` replaced by `+`. The site's own links use the target's frontmatter
+`permalink` (from `cache/<uid>`) instead; the dialog's "open in live site" ignores it. But a page loaded
+directly is matched against the permalink exactly as written while the browser percent-encodes the path, so a
+permalink with a space or non-ASCII character 404s when loaded directly. The path URL always works, and the
+site then rewrites the address to the permalink. So `pageUrl` uses a permalink only if every segment survives
+`encodeURIComponent` unchanged, otherwise the path URL. The entry `id` stays path-based (an Atom id must never
+change). Wikilinks resolve as in the app (`getLinkpathDest`) over the published file set.
 
 The live site is client-rendered by `app.js`, the same renderer as the Obsidian app. Its HTML shell sets
 `window.siteInfo = {uid, host, status, slug, redirect, customurl}` and preloads three things from

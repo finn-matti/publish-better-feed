@@ -2,14 +2,20 @@
 const pageSegment = (s: string) => encodeURIComponent(s).replace(/%20/g, '+');
 
 /**
- * Public URL of a published note's page. The site replaces the path with the note's
- * `permalink` when it has one.
+ * A page loaded directly is matched against the permalink exactly as written, but the browser
+ * percent-encodes its path. So a permalink only works as a link if it survives that unchanged.
+ */
+const directlyLoadable = (permalink: string) =>
+	permalink.split('/').every((segment) => encodeURIComponent(segment) === segment);
+
+/**
+ * Public URL of a published note's page: its `permalink` if it has a usable one (the site
+ * rewrites the path URL to it), otherwise the path URL, which always works.
  */
 export function pageUrl(siteUrl: string, path: string, permalink?: string): string {
 	const base = siteUrl.replace(/\/+$/, '');
-	if (permalink) {
-		return `${base}/${permalink.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/')}`;
-	}
+	const wanted = permalink?.replace(/^\/+/, '');
+	if (wanted && directlyLoadable(wanted)) return `${base}/${wanted}`;
 	return `${base}/${path.replace(/\.md$/i, '').split('/').map(pageSegment).join('/')}`;
 }
 

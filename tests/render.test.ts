@@ -318,9 +318,12 @@ describe('permalinks', () => {
 		siteUrl: SITE,
 		assetBase: ASSETS,
 		files: FILES,
-		permalinks: new Map([['Embedded note.md', '/custom-link/for probe']]),
+		permalinks: new Map([
+			['Embedded note.md', '/custom-link/for-probe'],
+			['Plus+sign.md', 'with space'],
+		]),
 	});
-	const url = `${SITE}/custom-link/for%20probe`;
+	const url = `${SITE}/custom-link/for-probe`;
 
 	it('links to the permalink URL instead of the path, keeping fragments', () => {
 		const out = r('[[Embedded note]] [[Embedded note|alias]] [[Embedded note#Head]]', 'Publish handling test.md');
@@ -337,6 +340,10 @@ describe('permalinks', () => {
 	});
 
 	it('leaves other notes on their path URLs', () => {
+		expect(r('[[Nested note]]', 'a.md')).toContain(`href="${SITE}/Sub+folder/Nested+note"`);
+	});
+
+	it('uses the path URL when the permalink could not be loaded directly', () => {
 		expect(r('[[Plus+sign]]', 'a.md')).toContain(`href="${SITE}/Plus%2Bsign"`);
 	});
 });

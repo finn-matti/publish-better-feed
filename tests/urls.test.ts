@@ -9,14 +9,20 @@ describe('pageUrl', () => {
 });
 
 describe('pageUrl with a permalink', () => {
-	it('replaces the path, without a leading slash, encoding each segment', () => {
-		expect(pageUrl('https://x.test/s', 'Any/Path.md', '/custom-link/for probe')).toBe(
-			'https://x.test/s/custom-link/for%20probe',
+	it('uses the permalink when it can be loaded directly, without a leading slash', () => {
+		expect(pageUrl('https://x.test/s', 'Any/Path.md', '/custom-link/for-probe')).toBe(
+			'https://x.test/s/custom-link/for-probe',
 		);
-		expect(pageUrl('https://x.test/s/', 'a.md', 'x')).toBe('https://x.test/s/x');
+		expect(pageUrl('https://x.test/s/', 'a.md', 'x_1.html')).toBe('https://x.test/s/x_1.html');
+	});
+	it('falls back to the path URL when the permalink would be percent-encoded', () => {
+		for (const permalink of ['custom/for probe', 'über', 'a+b', 'q?x', 'a#b']) {
+			expect(pageUrl('https://x.test', 'My Note.md', permalink)).toBe('https://x.test/My+Note');
+		}
 	});
 	it('falls back to the path when the permalink is empty', () => {
 		expect(pageUrl('https://x.test', 'My Note.md', '')).toBe('https://x.test/My+Note');
+		expect(pageUrl('https://x.test', 'My Note.md', '/')).toBe('https://x.test/My+Note');
 		expect(pageUrl('https://x.test', 'My Note.md', undefined)).toBe('https://x.test/My+Note');
 	});
 });
