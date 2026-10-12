@@ -96,5 +96,4 @@ with that changelog section as notes and fails if the section is missing.
   root `esbuild` equal to vitest's vite dependency.
 
 Still to check against a real site (`TESTVAULT` has one; `dev/inspect-publish.js` dumps the instance state):
-1. Are entry URLs right with a custom domain?
-2. Does a feed reader accept the feed, and does an Atom validator pass it?
+- Entry URLs with a custom domain.
