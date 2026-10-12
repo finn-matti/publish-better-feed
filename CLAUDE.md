@@ -19,7 +19,7 @@ types (xml/json), so the feed is hosted externally. Goal: a better `rss.xml`.
 3. Build Atom from `apiList()` (what's live and when) plus vault metadata.
 4. Push `feed.atom` to a GitHub repo served by GitHub Pages (Contents API).
 
-## Publish internals (verified in Obsidian 1.14.4 app bundle, undocumented)
+## Publish internals (from the Obsidian 1.14.4 app bundle and a live site, undocumented)
 
 `app.internalPlugins.getEnabledPluginById("publish")` returns the instance, or null if disabled.
 
@@ -27,11 +27,11 @@ types (xml/json), so the feed is hosted externally. Goal: a better `rss.xml`.
 | --- | --- |
 | `siteId`, `host` | null if no site configured. `host` is the API server, not the site URL |
 | `getCurrentSlug()` | async; site slug, falls back to `siteId` |
-| `apiCustomUrl()` | async; `{ url }` when a custom domain is set |
-| `apiList()` | `{ owner, files: [{ path, hash, ctime, mtime, size }] }` |
+| `apiCustomUrl()` | async; `{ id, url, redirect }`, `url` is `""` without a custom domain |
+| `apiList()` | `{ owner, files: [{ path, hash, ctime, mtime, size }] }`; times are server-side publish times in ms, `ctime` = `mtime` on first publish |
 | `apiUploadFile(file: TFile)` | dialog, "publish current file" command, file menu, own CLI handler |
 | `apiRemoveFile(path)` | unpublish and delete |
-| `getHash(file)` | SHA-256 of raw bytes |
+| `getHash(file)` | async; SHA-256 of raw bytes, equals the `apiList()` hash after publishing |
 | `getPublishFlag(file)`, `includes`, `excludes` | publish rules |
 | `scanForChanges()` | same diff the Publish dialog shows |
 
@@ -95,10 +95,7 @@ with that changelog section as notes and fails if the section is missing.
   optional packages: delete `node_modules` and `package-lock.json`, `npm install`. Keep the
   root `esbuild` equal to vitest's vite dependency.
 
-Needs a real Publish subscription (7-day refund deletes the site):
-1. Are `apiList()` `mtime`/`ctime` server-side publish times, in milliseconds?
-2. Does the hook fire for the dialog, the single-file command and the file menu?
-3. Does local `getHash()` match the live hash after publishing?
-4. Do `getCurrentSlug()` and `apiCustomUrl()` behave as above, and are entry URLs right with a custom domain?
-5. Do page URLs for paths with spaces, folders and special characters open the live pages?
-6. End to end: publish, feed, GitHub Pages, feed reader and an Atom validator.
+Still to check against a real site (the test vault `TESTVAULT` has one; `dev/inspect-publish.js` dumps the instance state):
+1. Does the hook fire for the file menu and the "publish current file" command, and does `ctime` stay put on re-publish?
+2. Are entry URLs right with a custom domain?
+3. Does a feed reader accept the feed, and does an Atom validator pass it?
