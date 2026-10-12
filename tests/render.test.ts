@@ -293,3 +293,22 @@ describe('math and footnotes', () => {
 		expect(html('Lost[^zzz]')).not.toContain('<sup>');
 	});
 });
+
+describe('duplicate title', () => {
+	it('leaves out a leading heading that repeats the entry title', () => {
+		const md = '# My Note\n\nBody.\n\n# Other';
+		expect(render(md, 'a.md', 'My Note')).toBe('<p>Body.</p>\n<h1>Other</h1>');
+		expect(render('# my *note*\n\nBody.', 'a.md', 'My Note')).toBe('<p>Body.</p>');
+	});
+
+	it('keeps a heading that differs, is not first, is not level 1, or when no title is given', () => {
+		expect(render('# Different\n\nBody.', 'a.md', 'My Note')).toContain('<h1>Different</h1>');
+		expect(render('Intro\n\n# My Note', 'a.md', 'My Note')).toContain('<h1>My Note</h1>');
+		expect(render('## My Note', 'a.md', 'My Note')).toContain('<h2>My Note</h2>');
+		expect(render('# My Note', 'a.md')).toContain('<h1>My Note</h1>');
+	});
+
+	it('still drops it when the heading holds a link', () => {
+		expect(render('# [[Embedded note]]\n\nBody.', 'a.md', 'Embedded note')).toBe('<p>Body.</p>');
+	});
+});

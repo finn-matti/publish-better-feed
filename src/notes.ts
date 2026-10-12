@@ -54,29 +54,31 @@ function frontmatter(
 export function metaResolver(
 	getLiveText: LiveText,
 	parseYaml: (yaml: string) => unknown,
-	render?: (text: string, path: string) => string,
+	render?: (text: string, path: string, title: string) => string,
 ): MetaResolver {
 	return async (live) => {
 		const basename = live.path.replace(/^.*\//, '').replace(/\.md$/i, '');
 		const text = await getLiveText(live);
 		if (text === null) return { title: basename, summary: '' };
 		const fm = frontmatter(text, parseYaml);
+		const title = str(fm.title) ?? basename;
 		return {
-			title: str(fm.title) ?? basename,
+			title,
 			summary: str(fm.description) ?? firstParagraph(text),
-			content: render ? safeRender(render, text, live.path) : undefined,
+			content: render ? safeRender(render, text, live.path, title) : undefined,
 		};
 	};
 }
 
 /** A note that can't be rendered still gets its summary. */
 function safeRender(
-	render: (text: string, path: string) => string,
+	render: (text: string, path: string, title: string) => string,
 	text: string,
 	path: string,
+	title: string,
 ): string | undefined {
 	try {
-		return render(text, path);
+		return render(text, path, title);
 	} catch {
 		return undefined;
 	}

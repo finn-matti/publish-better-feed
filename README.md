@@ -22,6 +22,10 @@ The feed carries each note's published text as HTML (or only a summary, see the 
 setting). Links and embeds only point at published files, links to unpublished notes become
 plain text, and comments and frontmatter are removed.
 
+Feed readers keep the entries they have already fetched. If you change the Content setting, or
+update the plugin, readers that already know an entry keep showing the older version until
+the note is published again. Resubscribing shows the current text of everything.
+
 Not supported: changes published from elsewhere (the `ob` CLI or another
 device). Run **Rebuild feed** to pick them up.
 

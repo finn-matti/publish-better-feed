@@ -24,7 +24,8 @@ export interface RenderContext {
 	files: string[];
 }
 
-export type Renderer = (markdown: string, notePath: string) => string;
+/** `title` is the entry's title: a leading heading that repeats it is left out. */
+export type Renderer = (markdown: string, notePath: string, title?: string) => string;
 
 /** The few mdast fields we read. Anything else in a node is ignored. */
 interface N {
@@ -65,7 +66,7 @@ export function createRenderer(ctx: RenderContext): Renderer {
 	const asset = (path: string) =>
 		`${ctx.assetBase}/${path.split('/').map(encodeURIComponent).join('/')}`;
 
-	return (markdown, notePath) => {
+	return (markdown, notePath, title) => {
 		const tree = fromMarkdown(markdown.replace(FRONTMATTER, ''), {
 			extensions: [
 				gfm(),
@@ -87,6 +88,15 @@ export function createRenderer(ctx: RenderContext): Renderer {
 		const defs = new Map<string, Def>();
 		collectDefinitions(tree, defs);
 		walk(tree, notePath, defs);
+		const first = tree.children?.[0];
+		if (
+			title &&
+			first?.type === 'heading' &&
+			first.depth === 1 &&
+			plainText(first).trim().toLowerCase() === title.trim().toLowerCase()
+		) {
+			tree.children?.shift();
+		}
 		return toHtml(tree);
 	};
 
@@ -211,6 +221,8 @@ export function createRenderer(ctx: RenderContext): Renderer {
 }
 
 const text = (value: string): N => ({ type: 'text', value });
+const plainText = (n: N): string =>
+	n.children ? n.children.map(plainText).join('') : (n.value ?? '');
 const key = (id: string | undefined) => (id ?? '').toLowerCase();
 
 function collectDefinitions(node: N, defs: Map<string, Def>): void {

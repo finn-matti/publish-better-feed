@@ -69,8 +69,8 @@ describe('metaResolver', () => {
 	});
 
 	it('adds rendered content when a renderer is given, and survives a failing renderer', async () => {
-		const withRender = metaResolver(text('# T\n\nBody.'), parseYaml, (t, p) => `<x>${p}:${t.length}</x>`);
-		expect((await withRender(live('a.md'))).content).toBe('<x>a.md:10</x>');
+		const withRender = metaResolver(text('# T\n\nBody.'), parseYaml, (t, p, title) => `<x>${p}:${t.length}:${title}</x>`);
+		expect((await withRender(live('a.md'))).content).toBe('<x>a.md:10:a</x>');
 		const failing = metaResolver(text('Body.'), parseYaml, () => {
 			throw new Error('boom');
 		});
