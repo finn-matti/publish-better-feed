@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { FeedFile, GithubTarget, PushResult } from '../src/github';
-import { FeedService, type FeedDeps } from '../src/service';
+import { FeedService, type ServiceDeps as FeedDeps } from '../src/service';
 import { DEFAULT_SETTINGS } from '../src/settings-model';
 import { mockPublish } from './mock-publish';
 
