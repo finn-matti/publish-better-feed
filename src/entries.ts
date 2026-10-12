@@ -30,16 +30,20 @@ export async function buildEntries(
 		maxEntries: number;
 		resolve: MetaResolver;
 		previous?: Map<string, Date>;
+		/** Notes whose page lives at a permalink. The entry id stays path-based. */
+		permalinks?: Map<string, string>;
 		cooldownMs?: number;
 	},
 ): Promise<FeedEntry[]> {
 	const notes = files
 		.filter((f) => /\.md$/i.test(f.path))
 		.map((f) => {
-			const url = pageUrl(opts.siteUrl, f.path);
+			// The id never changes, so it ignores permalinks; only the link follows them.
+			const id = pageUrl(opts.siteUrl, f.path);
+			const url = pageUrl(opts.siteUrl, f.path, opts.permalinks?.get(f.path));
 			const publishedAt = toDate(f.mtime || f.ctime);
-			const updated = surfaceTime(publishedAt, opts.previous?.get(url), opts.cooldownMs ?? 0);
-			return { f, url, updated, publishedAt };
+			const updated = surfaceTime(publishedAt, opts.previous?.get(id), opts.cooldownMs ?? 0);
+			return { f, id, url, updated, publishedAt };
 		})
 		.sort(
 			(a, b) =>
@@ -50,10 +54,10 @@ export async function buildEntries(
 		.slice(0, opts.maxEntries);
 
 	const entries: FeedEntry[] = [];
-	for (const { f, url, updated } of notes) {
+	for (const { f, id, url, updated } of notes) {
 		const meta = await opts.resolve(f);
 		entries.push({
-			id: url,
+			id,
 			title: meta.title,
 			url,
 			published: toDate(f.ctime || f.mtime),

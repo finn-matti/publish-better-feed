@@ -15,9 +15,16 @@ export interface FeedDeps {
 	getSettings: () => FeedSettings;
 	getInstance: () => PublishInstance | null;
 	getToken: (secretName: string) => string | null;
+	/** Published notes that have a permalink; empty if it can't be read. */
+	fetchPermalinks: (inst: PublishInstance) => Promise<Map<string, string>>;
 	createMetaResolver: (
 		inst: PublishInstance,
-		ctx: { siteUrl: string; files: PublishFile[]; full: boolean },
+		ctx: {
+			siteUrl: string;
+			files: PublishFile[];
+			permalinks: Map<string, string>;
+			full: boolean;
+		},
 	) => MetaResolver;
 	readFeed: (target: GithubTarget) => Promise<FeedFile>;
 	push: (
@@ -88,14 +95,17 @@ export class FeedService {
 
 		const siteUrl = await resolveSiteUrl(inst);
 		const files = parsePublishList(await inst.apiList());
+		const permalinks = await this.deps.fetchPermalinks(inst);
 		const entries = await buildEntries(files, {
 			siteUrl,
 			maxEntries: s.maxEntries,
+			permalinks,
 			previous: parseFeedState(current.text),
 			cooldownMs: Math.max(0, s.cooldownHours) * 3_600_000,
 			resolve: this.deps.createMetaResolver(inst, {
 				siteUrl,
 				files,
+				permalinks,
 				full: s.contentMode === 'full',
 			}),
 		});

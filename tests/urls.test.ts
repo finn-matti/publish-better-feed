@@ -8,6 +8,19 @@ describe('pageUrl', () => {
 	});
 });
 
+describe('pageUrl with a permalink', () => {
+	it('replaces the path, without a leading slash, encoding each segment', () => {
+		expect(pageUrl('https://x.test/s', 'Any/Path.md', '/custom-link/for probe')).toBe(
+			'https://x.test/s/custom-link/for%20probe',
+		);
+		expect(pageUrl('https://x.test/s/', 'a.md', 'x')).toBe('https://x.test/s/x');
+	});
+	it('falls back to the path when the permalink is empty', () => {
+		expect(pageUrl('https://x.test', 'My Note.md', '')).toBe('https://x.test/My+Note');
+		expect(pageUrl('https://x.test', 'My Note.md', undefined)).toBe('https://x.test/My+Note');
+	});
+});
+
 describe('assets', () => {
 	it('builds the access URL from host and site id', () => {
 		expect(assetBase('publish-01.obsidian.md', 'abc')).toBe('https://publish-01.obsidian.md/access/abc');

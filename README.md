@@ -60,7 +60,11 @@ Do not keep anything private in a note you publish, even in a comment.
 - **GitHub API** (`api.github.com`): reads and writes the feed file in your
   repository, using your token.
 - **Obsidian Publish API**: the plugin asks the core Publish plugin for the
-  list of published files. The request is made by Obsidian itself.
+  list of published files and, for notes you have edited since publishing, for
+  the live copy. These requests are made by Obsidian itself, with your session.
+- **Your Publish site** (`publish-01.obsidian.md` or the host Publish reports): the plugin reads the
+  site's public metadata file (`/cache/<site id>`) to find notes with a `permalink`. No account
+  token is sent, and if the request fails, links use the file paths.
 
 No other network requests are made and no telemetry is collected.
 

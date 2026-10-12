@@ -312,3 +312,31 @@ describe('duplicate title', () => {
 		expect(render('# [[Embedded note]]\n\nBody.', 'a.md', 'Embedded note')).toBe('<p>Body.</p>');
 	});
 });
+
+describe('permalinks', () => {
+	const r = createRenderer({
+		siteUrl: SITE,
+		assetBase: ASSETS,
+		files: FILES,
+		permalinks: new Map([['Embedded note.md', '/custom-link/for probe']]),
+	});
+	const url = `${SITE}/custom-link/for%20probe`;
+
+	it('links to the permalink URL instead of the path, keeping fragments', () => {
+		const out = r('[[Embedded note]] [[Embedded note|alias]] [[Embedded note#Head]]', 'Publish handling test.md');
+		expect(out).toContain(`<a href="${url}">Embedded note</a>`);
+		expect(out).toContain(`<a href="${url}">alias</a>`);
+		expect(out).toContain(`<a href="${url}#Head">Embedded note > Head</a>`);
+		expect(out).not.toContain('Embedded+note');
+	});
+
+	it('applies to note embeds, relative Markdown links and the note itself', () => {
+		expect(r('![[Embedded note]]', 'a.md')).toContain(`href="${url}"`);
+		expect(r('[n](Embedded%20note.md)', 'a.md')).toContain(`href="${url}"`);
+		expect(r('[x](#Intro)', 'Embedded note.md')).toContain(`href="${url}#Intro"`);
+	});
+
+	it('leaves other notes on their path URLs', () => {
+		expect(r('[[Plus+sign]]', 'a.md')).toContain(`href="${SITE}/Plus%2Bsign"`);
+	});
+});

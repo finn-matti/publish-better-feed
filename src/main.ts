@@ -3,6 +3,7 @@ import { createDebouncer } from './debounce';
 import { pushFile, readFeed } from './github';
 import { liveText } from './live';
 import { metaResolver } from './notes';
+import { fetchPermalinks } from './permalinks';
 import { getPublishInstance, hookPublish } from './publish';
 import { createRenderer } from './render';
 import { FeedService } from './service';
@@ -25,12 +26,13 @@ export default class FeedPlugin extends Plugin {
 			getSettings: () => this.settings,
 			getInstance: () => getPublishInstance(this.app),
 			getToken: (name) => this.app.secretStorage.getSecret(name),
-			createMetaResolver: (inst, { siteUrl, files, full }) => {
+			createMetaResolver: (inst, { siteUrl, files, permalinks, full }) => {
 				const render = full
 					? createRenderer({
 							siteUrl,
 							assetBase: assetBase(inst.host, inst.siteId),
 							files: files.map((f) => f.path),
+							permalinks,
 						})
 					: undefined;
 				return metaResolver(
@@ -47,6 +49,7 @@ export default class FeedPlugin extends Plugin {
 					render,
 				);
 			},
+			fetchPermalinks,
 			readFeed,
 			push: pushFile,
 			notify: (message) => new Notice(message),

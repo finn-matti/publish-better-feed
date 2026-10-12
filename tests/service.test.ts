@@ -27,6 +27,7 @@ function setup(overrides: Partial<FeedDeps> = {}, files = FILES) {
 		getInstance: () => mockPublish(files),
 		getToken: () => 'secret',
 		createMetaResolver: () => (f) => Promise.resolve({ title: f.path, summary: '' }),
+		fetchPermalinks: () => Promise.resolve(new Map()),
 		readFeed,
 		push,
 		notify,
@@ -201,5 +202,22 @@ describe('FeedService.rebuild', () => {
 		it('shows every publish when the cooldown is 0', async () => {
 			expect(updatedOf(await run(0, B - 30 * 60_000), B_ID)).toBe(iso(B));
 		});
+	});
+
+	it('uses permalinks for links and keeps entry ids path-based', async () => {
+		let seen: Map<string, string> | undefined;
+		const { service, push } = setup({
+			fetchPermalinks: () => Promise.resolve(new Map([['a.md', 'custom/a']])),
+			createMetaResolver: (_inst, ctx) => {
+				seen = ctx.permalinks;
+				return (f) => Promise.resolve({ title: f.path, summary: '' });
+			},
+		});
+		await service.rebuild(false);
+		const xml = push.mock.calls[0]![1];
+		expect(seen?.get('a.md')).toBe('custom/a');
+		expect(xml).toContain('<id>https://publish.obsidian.md/my-slug/a</id>');
+		expect(xml).toContain('<link rel="alternate" type="text/html" href="https://publish.obsidian.md/my-slug/custom/a"/>');
+		expect(xml).toContain('<link rel="alternate" type="text/html" href="https://publish.obsidian.md/my-slug/b"/>');
 	});
 });

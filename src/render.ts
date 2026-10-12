@@ -22,6 +22,8 @@ export interface RenderContext {
 	assetBase: string;
 	/** Paths of everything that is published. Only these can be linked or embedded. */
 	files: string[];
+	/** Published notes that have a `permalink`: their page URL is the permalink. */
+	permalinks?: Map<string, string>;
 }
 
 /** `title` is the entry's title: a leading heading that repeats it is left out. */
@@ -64,6 +66,7 @@ const SIZE = /^\d+(x\d+)?$/;
 export function createRenderer(ctx: RenderContext): Renderer {
 	const idx = buildIndex(ctx.files);
 	const asset = (path: string) => assetUrl(ctx.assetBase, path);
+	const page = (path: string) => pageUrl(ctx.siteUrl, path, ctx.permalinks?.get(path));
 
 	return (markdown, notePath, title) => {
 		const tree = fromMarkdown(markdown.replace(FRONTMATTER, ''), {
@@ -189,12 +192,12 @@ export function createRenderer(ctx: RenderContext): Renderer {
 				if (h) props.height = h;
 				return [{ type: 'image', url: asset(target), alt, data: { hProperties: props } }];
 			}
-			const url = NOTE.test(target) ? pageUrl(ctx.siteUrl, target) : asset(target);
+			const url = NOTE.test(target) ? page(target) : asset(target);
 			return [{ type: 'link', url, children: [text(alt)] }];
 		}
 		const label = alias || (path ? (heading ? `${path} > ${heading}` : path) : heading);
 		if (!target) return [text(label)];
-		const url = NOTE.test(target) ? pageUrl(ctx.siteUrl, target) + fragment : asset(target);
+		const url = NOTE.test(target) ? page(target) + fragment : asset(target);
 		return [{ type: 'link', url, children: [text(label)] }];
 	}
 
@@ -205,7 +208,7 @@ export function createRenderer(ctx: RenderContext): Renderer {
 		if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('//')) return null;
 		const [pathPart = '', frag] = url.split('#') as [string, string?];
 		const hash = frag ? `#${frag}` : '';
-		if (!pathPart) return isImage ? null : pageUrl(ctx.siteUrl, notePath) + hash;
+		if (!pathPart) return isImage ? null : page(notePath) + hash;
 		let decoded = pathPart;
 		try {
 			decoded = decodeURIComponent(pathPart);
@@ -214,7 +217,7 @@ export function createRenderer(ctx: RenderContext): Renderer {
 		}
 		const target = idx.exact(decoded, notePath);
 		if (!target) return null;
-		if (NOTE.test(target)) return isImage ? null : pageUrl(ctx.siteUrl, target) + hash;
+		if (NOTE.test(target)) return isImage ? null : page(target) + hash;
 		return asset(target);
 	}
 }

@@ -111,6 +111,32 @@ describe('buildEntries cooldown and order', () => {
 	});
 });
 
+describe('buildEntries permalinks', () => {
+	it('links to the permalink but keeps the path-based id', async () => {
+		const [e] = await buildEntries([file('Sub/My Note.md', 1_700_000_000_000)], {
+			siteUrl: 'https://x.test',
+			maxEntries: 5,
+			resolve: () => Promise.resolve({ title: 'T', summary: '' }),
+			permalinks: new Map([['Sub/My Note.md', 'custom/page']]),
+		});
+		expect(e?.id).toBe('https://x.test/Sub/My+Note');
+		expect(e?.url).toBe('https://x.test/custom/page');
+	});
+
+	it('keeps the cooldown state under the stable id when a permalink appears', async () => {
+		const mtime = 1_700_000_000_000;
+		const [e] = await buildEntries([file('a.md', mtime)], {
+			siteUrl: 'https://x.test',
+			maxEntries: 5,
+			resolve: () => Promise.resolve({ title: 'T', summary: '' }),
+			permalinks: new Map([['a.md', 'custom']]),
+			previous: new Map([['https://x.test/a', new Date(mtime - 60_000)]]),
+			cooldownMs: 86_400_000,
+		});
+		expect(e?.updated.getTime()).toBe(mtime - 60_000);
+	});
+});
+
 describe('buildAtom content', () => {
 	it('emits escaped HTML content when present', async () => {
 		const entries = await buildEntries([file('a.md', 1_700_000_000_000)], {

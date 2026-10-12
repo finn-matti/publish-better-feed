@@ -53,8 +53,9 @@ Publish emits no events: wrap `apiUploadFile` and `apiRemoveFile` with `monkey-a
 URLs as Publish builds them: site = `https://publish.obsidian.md/<slug>` (or the custom
 domain, no slug); page = site + `/` + path without `.md`, each segment
 `encodeURIComponent` with `%20` replaced by `+`. The live site replaces the path with the target's
-frontmatter `permalink` (from `cache/<uid>`); the dialog's "open in live site" ignores it. We don't handle
-`permalink` yet. Wikilinks resolve as in the app (`getLinkpathDest`) over the published file set.
+frontmatter `permalink` (read from `cache/<uid>`, unencoded; we encode each segment); the dialog's
+"open in live site" ignores it. We do the same in links and entries (`permalinks.ts`, `urls.ts`), but the
+entry `id` stays path-based because an Atom id must never change. Wikilinks resolve as in the app (`getLinkpathDest`) over the published file set.
 
 The live site is client-rendered by `app.js`, the same renderer as the Obsidian app. Its HTML shell sets
 `window.siteInfo = {uid, host, status, slug, redirect, customurl}` and preloads three things from
@@ -76,7 +77,8 @@ then grep `app.js` (identifiers are minified, property and string names are not)
 - Observe only. Never call `apiUploadFile` with our own files.
 - The hook wrapper is transparent: call the original first, return its exact result,
   never throw, notify only on success.
-- Never read or handle the account token. All Publish calls go through the instance.
+- Never read or handle the account token. Publish calls go through the instance; the one direct
+  request to a Publish host is the public, tokenless `cache/<uid>` read for permalinks, which may fail.
 - Guard every internal access (existence and type checks). If the shape changes, disable
   the hook; "Rebuild feed" must keep working.
 - Feed content must be published content: use text only if its SHA-256 (lowercase hex) equals the
