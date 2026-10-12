@@ -47,8 +47,13 @@ URLs as Publish builds them: site = `https://publish.obsidian.md/<slug>` (or the
 domain, no slug); page = site + `/` + path without `.md`, each segment
 `encodeURIComponent` with `%20` replaced by `+`. `permalink` is ignored by Publish's own links.
 
-Assets are served at `https://<host>/access/<siteId>/<path>` (`host` is the API host, each path
-segment `encodeURIComponent`). How the live site renders a note, which `render.ts` follows: published
+The live site is client-rendered by `app.js`, the same renderer as the Obsidian app. Its HTML shell sets
+`window.siteInfo = {uid, host, status, slug, redirect, customurl}` and preloads three things from
+`https://<host>/` (`host` is the API host): `cache/<uid>` (public JSON, the published metadata cache per
+file: `links`, `embeds`, `tags`, `headings`, `frontmatter`, `footnotes`, `listItems`), `options/<uid>`, and
+the raw note at `access/<uid>/<path>.md`. Notes and assets are served from `access/` (each path segment
+`encodeURIComponent`, CORS open, `max-age=30`); a missing path returns 200 with a "## Not Found" body and the
+real status in the `obs-status` header. How the live site renders a note, which `render.ts` follows: published
 wikilinks are links (alias as text, `Note > Heading` for heading links); unpublished or missing ones are
 still links with the written text; note embeds are inlined, embeds of unpublished notes render nothing;
 image embeds and relative Markdown images become `<img>` of the asset (`|100` width, `|alt` alt);
