@@ -181,3 +181,115 @@ describe('what never reaches the output', () => {
 		expect(out).toContain('text');
 	});
 });
+
+describe('reference-style links and images obey the same URL policy', () => {
+	it('links a reference to an allowed URL and unwraps a disallowed one', () => {
+		expect(html('[x][1]\n\n[1]: https://example.com "Title"')).toContain(
+			'<a href="https://example.com" title="Title">x</a>',
+		);
+		for (const bad of ['javascript:alert(1)', 'data:text/html,x', '//evil.test']) {
+			const out = html(`[click][1]\n\n[1]: ${bad}`);
+			expect(out).not.toContain('<a');
+			expect(out).toContain('click');
+		}
+	});
+
+	it('shows only the text for a reference with no definition', () => {
+		const out = html('[lost][nope]');
+		expect(out).not.toContain('<a');
+		expect(out).toContain('lost');
+	});
+
+	it('resolves image references to published assets only', () => {
+		expect(html('![a][i]\n\n[i]: test-image.png')).toContain(`src="${ASSETS}/test-image.png"`);
+		expect(html('![a][i]\n\n[i]: missing.png')).not.toContain('<img');
+		expect(html('![a][i]\n\n[i]: javascript:x')).not.toContain('<img');
+		expect(html('![a][none]')).not.toContain('<img');
+	});
+
+	it('never outputs definitions themselves', () => {
+		expect(html('[1]: https://example.com')).toBe('');
+	});
+});
+
+describe('escaping', () => {
+	it('escapes text, inline code and fenced code', () => {
+		const out = html('a < b & c <script>x</script>\n\n`<b>`\n\n```\n<i>&amp;</i>\n```');
+		expect(out).toContain('a &lt; b &amp; c');
+		expect(out).toContain('<code>&lt;b></code>');
+		expect(out).toContain('&lt;i>&amp;amp;&lt;/i>');
+		expect(out).not.toMatch(/<script|<b>|<i>/);
+	});
+
+	it('escapes attributes', () => {
+		const out = html('[a](https://example.com/?q="x"&y=1 "he said \\"hi\\"")\n\n![say "hi"](test-image.png)');
+		expect(out).toContain('&quot;');
+		expect(out).not.toMatch(/="[^"]*"[^ >]*"[^>]*>/);
+		expect(out).toContain('alt="say &quot;hi&quot;"');
+	});
+
+	it('refuses a code fence language that could break out of the attribute', () => {
+		const out = html('```js" onclick="x\ncode\n```');
+		expect(out).not.toContain('onclick');
+		expect(out).toContain('<pre><code>');
+		expect(html('```ts\ncode\n```')).toContain('class="language-ts"');
+	});
+});
+
+describe('Markdown structure', () => {
+	it('renders headings, emphasis, strikethrough, breaks, rules and autolinks', () => {
+		const out = html('### H3\n\n*em* **b** ~~gone~~ line\\\nbreak\n\n---\n\nsee www.example.com');
+		expect(out).toContain('<h3>H3</h3>');
+		expect(out).toContain('<em>em</em> <strong>b</strong> <del>gone</del>');
+		expect(out).toContain('<br>');
+		expect(out).toContain('<hr>');
+		expect(out).toContain('<a href="http://www.example.com">www.example.com</a>');
+	});
+
+	it('renders tight and loose lists, numbering and nesting', () => {
+		expect(html('- a\n- b')).toBe('<ul>\n<li>a</li>\n<li>b</li>\n</ul>');
+		expect(html('3. a\n4. b')).toContain('<ol start="3">');
+		expect(html('1. a')).toContain('<ol>');
+		expect(html('- a\n\n- b')).toContain('<li><p>a</p>\n</li>');
+		const nested = html('- a\n  - b');
+		expect(nested).toContain('<li>a\n<ul>\n<li>b</li>\n</ul></li>');
+	});
+
+	it('renders task items and table alignment', () => {
+		expect(html('- [ ] t\n- [x] d')).toContain('<li><input type="checkbox" disabled> t</li>');
+		expect(html('- [x] d')).toContain('<input type="checkbox" checked disabled> d');
+		const t = html('| l | c | r |\n|:--|:-:|--:|\n| 1 | 2 | 3 |');
+		expect(t).toContain('<th align="left">l</th><th align="center">c</th><th align="right">r</th>');
+		expect(t).toContain('<td align="right">3</td>');
+		expect(html('| only |\n|---|')).not.toContain('<tbody>');
+	});
+
+	it('renders nested blockquotes and drops raw HTML inside structures', () => {
+		const out = html('> outer\n>\n> > inner\n\n- item <b onclick="x()">bold</b>\n\n> <div>raw</div>');
+		expect(out).toContain('<blockquote>\n<p>outer</p>\n<blockquote>\n<p>inner</p>\n</blockquote>\n</blockquote>');
+		expect(out).not.toMatch(/onclick|<b[ >]|<div/);
+	});
+
+	it('returns nothing for empty input or frontmatter alone', () => {
+		expect(html('')).toBe('');
+		expect(html('---\ntitle: x\n---\n')).toBe('');
+	});
+});
+
+describe('math and footnotes', () => {
+	it('keeps formulas intact instead of parsing them as Markdown', () => {
+		const out = html('$a_1 * b_2$ and\n\n$$\nx_i * y_i\n$$');
+		expect(out).toContain('<code class="language-math math-inline">a_1 * b_2</code>');
+		expect(out).toContain('<pre><code class="language-math math-display">x_i * y_i\n</code></pre>');
+		expect(out).not.toContain('<em>');
+	});
+
+	it('numbers footnotes in order of first reference, without anchors or ids', () => {
+		const out = html('B[^b] then A[^a] and B again[^b].\n\n[^a]: Note A.\n[^b]: Note B.\n[^c]: Unused.');
+		expect(out).toContain('B<sup>1</sup> then A<sup>2</sup> and B again<sup>1</sup>.');
+		expect(out.indexOf('Note B.')).toBeLessThan(out.indexOf('Note A.'));
+		expect(out).not.toContain('Unused');
+		expect(out).not.toMatch(/id=|href="#/);
+		expect(html('Lost[^zzz]')).not.toContain('<sup>');
+	});
+});

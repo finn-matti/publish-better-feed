@@ -19,7 +19,8 @@ nothing (checked with NetNewsWire's Reader View). Full text in the feed is what 
    (`ob` CLI, other devices).
 2. Debounce after the last upload or remove to detect the end of a publish run.
 3. Build Atom from `apiList()` (what's live and when) plus the verified published text of each
-   note: a summary and, by default, the full text as HTML (`render.ts`, unified + `@quartz-community/remark-obsidian`).
+   note: a summary and, by default, the full text as HTML (`render.ts`: `mdast-util-from-markdown` with the GFM and math extensions and the syntaxes of
+   `@quartz-community/remark-obsidian`, then our own small HTML serializer; no unified/rehype).
 4. Push `feed.atom` to a GitHub repo served by GitHub Pages (Contents API).
 
 The previous feed is the only state: each entry's `updated` is when it last surfaced. A note moves to
@@ -83,8 +84,9 @@ then grep `app.js` (identifiers are minified, property and string names are not)
   and no summary. `apiDownloadFile` returns an `ArrayBuffer` and never throws; on a server error it
   returns the error body ("Something broke!"), so always verify.
 - Rendering: only published files are linked or embedded. Unpublished wikilinks become plain text,
-  embeds of unpublished files are dropped, raw HTML is dropped, and link or image URLs must be
-  http(s), mailto or a published path. Comments and frontmatter never reach the output.
+  embeds of unpublished files are dropped, raw HTML is dropped, and link or image URLs (reference-style
+  included) must be http(s), mailto or a published path. The serializer escapes every attribute and
+  only emits the node types it knows. Comments and frontmatter never reach the output.
 - An automatic run with zero entries must not push (a bad `apiList()` would wipe the feed).
 - No Node APIs: `requestUrl` and `crypto.subtle`, so it works on mobile.
 - The GitHub token lives in SecretStorage (since 1.11.4, hence `minAppVersion`); settings
