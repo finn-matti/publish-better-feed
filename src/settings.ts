@@ -101,7 +101,7 @@ export class FeedSettingTab extends PluginSettingTab {
 				new SecretComponent(this.app, el)
 					.setValue(s.tokenSecretName)
 					.onChange(async (v) => {
-						s.tokenSecretName = v;
+						s.tokenSecretName = v ?? '';
 						await this.plugin.saveSettings();
 					}),
 			);
