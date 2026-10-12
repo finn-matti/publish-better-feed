@@ -69,6 +69,9 @@ Publish emits no events. Wrap `apiUploadFile` and `apiRemoveFile` with `monkey-a
 commitlint (`@commitlint/config-conventional`) in a husky `commit-msg` hook and in CI
 for pull requests. Example: `feat(feed): add per-change entries`.
 
+Commit messages are a single short subject line: no body, no trailers, no
+attribution lines, unless explicitly asked for.
+
 ## Testing
 
 - No Publish trial. Develop against a mock instance with the shape above.
