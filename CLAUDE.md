@@ -9,6 +9,8 @@ Publish's built-in `/rss.xml` is generated server-side and only has `<title>` an
 `<link>` per item (no dates, guid, or content; oldest first; moved files appear as
 new). It can't be enhanced from the client. Publish rejects non-whitelisted file
 types (xml/json), so the feed is hosted externally. Goal: a better `rss.xml`.
+A Publish page is an empty HTML shell filled in by JavaScript, so a reader's article extraction gets
+nothing (checked with NetNewsWire's Reader View). Full text in the feed is what makes notes readable there.
 
 ## Architecture
 
