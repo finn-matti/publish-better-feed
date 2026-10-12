@@ -19,7 +19,7 @@ export const DEFAULT_SETTINGS: FeedSettings = {
 	githubOwner: '',
 	githubRepo: '',
 	githubBranch: 'main',
-	feedPath: 'feed.xml',
+	feedPath: 'feed.atom',
 	tokenSecretName: '',
 	feedTitle: 'Recent changes',
 	feedAuthor: '',
@@ -90,7 +90,11 @@ export class FeedSettingTab extends PluginSettingTab {
 		text('Owner', 'GitHub user or organization.', 'githubOwner');
 		text('Repository', 'Repository served by GitHub Pages.', 'githubRepo');
 		text('Branch', 'Branch GitHub Pages publishes from.', 'githubBranch');
-		text('Feed path', 'File path inside the repository.', 'feedPath');
+		text(
+			'Feed path',
+			'File path inside the repository. Keep the .atom extension so Pages serves the right content type.',
+			'feedPath',
+		);
 		new Setting(containerEl)
 			.setName('Access token')
 			.setDesc(

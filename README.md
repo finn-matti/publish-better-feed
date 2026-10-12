@@ -11,7 +11,7 @@ summaries and lists oldest first. This plugin builds a proper feed instead.
 2. A few seconds after the last change, it reads the list of live files from
    Publish and builds an Atom feed (newest first, one entry per note, with a
    summary from the `description` property or the first paragraph).
-3. It pushes `feed.xml` to a GitHub repository served by GitHub Pages.
+3. It pushes `feed.atom` to a GitHub repository served by GitHub Pages.
 
 Not supported: changes published from elsewhere (the `ob` CLI or another
 device). Run **Rebuild feed** to pick them up.
@@ -23,7 +23,8 @@ device). Run **Rebuild feed** to pick them up.
    **Contents: read and write**.
 3. In the plugin settings, enter owner, repository and branch, and pick or
    create a secret for the token. The site URL comes from Publish itself.
-4. Subscribe to `https://<owner>.github.io/<repo>/feed.xml`.
+4. Subscribe to `https://<owner>.github.io/<repo>/feed.atom`. The `.atom` extension makes GitHub Pages serve it as
+   `application/atom+xml`; `.xml` would be served as plain `application/xml`.
 
 ## Security
 

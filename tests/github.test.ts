@@ -6,7 +6,7 @@ vi.mock('obsidian', () => ({ requestUrl: (p: unknown) => requestUrl(p) }));
 import { pushFile } from '../src/github';
 import { gitBlobSha } from '../src/hash';
 
-const target = { token: 't', owner: 'o', repo: 'r', branch: 'main', path: 'feed.xml' };
+const target = { token: 't', owner: 'o', repo: 'r', branch: 'main', path: 'feed.atom' };
 const res = (status: number, json: unknown = {}) => ({ status, json, text: JSON.stringify(json) });
 interface Req { method?: string; url: string; headers: Record<string, string>; body?: string }
 interface PutBody { sha?: string; branch: string; content: string }

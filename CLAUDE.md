@@ -15,7 +15,7 @@ types (xml/json), so we don't upload the feed to Publish. We host it externally.
 1. Hook the core Publish plugin to learn when files are published or removed.
 2. Debounce (a few seconds after the last upload or remove) to detect the end of a publish run.
 3. Build Atom from `apiList()` (what's live and when) plus vault content.
-4. Push `feed.xml` to a GitHub repo served by GitHub Pages (Contents API).
+4. Push `feed.atom` to a GitHub repo served by GitHub Pages (Contents API).
 
 ## Publish internals (verified in Obsidian 1.14.4 app bundle, undocumented)
 
