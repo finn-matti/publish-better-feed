@@ -65,8 +65,7 @@ identifiers are minified but property and string names survive).
   device's Obsidian instance. The hook only sees uploads and removals made through
   this instance. The manual "Rebuild feed" command is the only way to pick up
   changes made elsewhere.
-- Frontmatter opt-outs (`feed: skip`) and `permalink` handling. Removed on purpose; they
-  were plugin-specific and unverified.
+- Frontmatter opt-outs (`feed: skip`) and `permalink` handling.
 
 ## Rules
 
@@ -92,7 +91,7 @@ identifiers are minified but property and string names survive).
 
 ## Open decisions
 
-- Feed semantics: one entry per note (done) or one entry per change or publish run.
+- Feed semantics: one entry per note (current) or one entry per change or publish run.
   Crossposting tools need new IDs per change; this needs a persisted snapshot of the
   previous `apiList()` to diff against.
 - Content: summary only so far, add full content later. Rendering with `MarkdownRenderer`
@@ -139,9 +138,6 @@ snippet empties the fake's published list.
 Throwaway target: `finn-matti/publish-feed-test` (public, Pages from `main`), feed at
 `https://finn-matti.github.io/publish-feed-test/feed.atom`. Check pushes with `gh api
 repos/finn-matti/publish-feed-test/contents/feed.atom`.
-
-Verified against the fake: create, update (`updated` moves, `published` stays), remove,
-unchanged rebuild (no commit), stale-sha retry, Pages serving with the right content type.
 
 Real-subscription checklist (7-day refund deletes the site):
 1. Are `apiList()` `mtime`/`ctime` values server-side publish times, in milliseconds?
