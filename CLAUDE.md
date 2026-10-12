@@ -29,7 +29,7 @@ types (xml/json), so the feed is hosted externally. Goal: a better `rss.xml`.
 | `getCurrentSlug()` | async; site slug, falls back to `siteId` |
 | `apiCustomUrl()` | async; `{ id, url, redirect }`, `url` is `""` without a custom domain |
 | `apiList()` | `{ owner, files: [{ path, hash, ctime, mtime, size }] }`; times are server-side publish times in ms, `ctime` = `mtime` on first publish |
-| `apiUploadFile(file: TFile)` | dialog, "publish current file" command, file menu, own CLI handler |
+| `apiUploadFile(file: TFile)` | every upload: dialog, file menu and "publish current file" (both call `uploadFile()`, which opens the dialog's upload section), CLI handlers |
 | `apiRemoveFile(path)` | unpublish and delete |
 | `getHash(file)` | async; SHA-256 of raw bytes, equals the `apiList()` hash after publishing |
 | `getPublishFlag(file)`, `includes`, `excludes` | publish rules |
@@ -95,7 +95,6 @@ with that changelog section as notes and fails if the section is missing.
   optional packages: delete `node_modules` and `package-lock.json`, `npm install`. Keep the
   root `esbuild` equal to vitest's vite dependency.
 
-Still to check against a real site (the test vault `TESTVAULT` has one; `dev/inspect-publish.js` dumps the instance state):
-1. Does the hook fire for the file menu and the "publish current file" command, and does `ctime` stay put on re-publish?
-2. Are entry URLs right with a custom domain?
-3. Does a feed reader accept the feed, and does an Atom validator pass it?
+Still to check against a real site (`TESTVAULT` has one; `dev/inspect-publish.js` dumps the instance state):
+1. Are entry URLs right with a custom domain?
+2. Does a feed reader accept the feed, and does an Atom validator pass it?
