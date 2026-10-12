@@ -78,6 +78,10 @@ no attribution, unless explicitly asked. Default branch is `main`.
 Run `npm run lint`, `build` and `test` before committing.
 Add user-visible changes to `CHANGELOG.md` under `[Unreleased]` ([Keep a Changelog](https://keepachangelog.com/en/1.0.0/)).
 
+Release: `npm version x.y.z`, then `git push --follow-tags`. It bumps `manifest.json`, `versions.json`
+and the changelog (`[Unreleased]` becomes the version) and tags. The tag workflow drafts a GitHub release
+with that changelog section as notes and fails if the section is missing.
+
 ## Testing
 
 - Unit tests use `tests/mock-publish.ts` (the instance shape above) and a mocked `requestUrl`.
