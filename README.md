@@ -37,6 +37,15 @@ The GitHub token is kept in Obsidian's secret storage (requires Obsidian
 to a single repository. The plugin never reads or handles your Obsidian
 account token.
 
+**What reaches the feed.** Only text that is published: a note's text is used only if it matches
+what is live on Publish, and edits you haven't published never appear. Links and embeds point only
+at published files, and raw HTML is dropped.
+
+**Comments are not private on Publish.** `%%comments%%` and frontmatter are removed from the
+feed, as Publish hides them when it renders a page. But Publish serves the raw Markdown of every
+published note, comments included, at a public address, and search engines receive it as well.
+Do not keep anything private in a note you publish, even in a comment.
+
 ## Network use
 
 - **GitHub API** (`api.github.com`): reads and writes the feed file in your
