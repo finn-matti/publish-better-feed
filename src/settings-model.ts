@@ -11,7 +11,6 @@ export interface FeedSettings {
 	cooldownHours: number;
 	maxEntries: number;
 	autoPush: boolean;
-	debounceSeconds: number;
 }
 
 export const DEFAULT_SETTINGS: FeedSettings = {
@@ -26,7 +25,6 @@ export const DEFAULT_SETTINGS: FeedSettings = {
 	cooldownHours: 24,
 	maxEntries: 50,
 	autoPush: true,
-	debounceSeconds: 10,
 };
 
 /** Public URL of the feed on GitHub Pages. */

@@ -17,7 +17,8 @@ nothing (checked with NetNewsWire's Reader View). Full text in the feed is what 
 1. Hook the core Publish plugin to learn when files are published or removed. Only
    this instance is observed; the "Rebuild feed" command covers changes made elsewhere
    (`ob` CLI, other devices).
-2. Debounce after the last upload or remove to detect the end of a publish run.
+2. `FeedRunner` (`runner.ts`) owns the lifecycle: idle, waiting (10 s without another upload, via
+   Obsidian's `debounce`), running. Updates never overlap; a publish during one starts the wait again.
 3. Build Atom from `apiList()` (what's live and when) plus the verified published text of each
    note: a summary and, by default, the full text as HTML (`render.ts`: `mdast-util-from-markdown` with the GFM and math extensions and the syntaxes of
    `@quartz-community/remark-obsidian`, then our own small HTML serializer; no unified/rehype).
@@ -27,9 +28,9 @@ The previous feed is the only state: each entry's `updated` is when it last surf
 the top at most once per cooldown (24 h by default, 0 = every publish); publishing sooner refreshes its
 text but not its position (`state.ts`, `surfaceTime`). `published` is the first publish time.
 
-Logic lives in `service.ts` (`FeedService`, dependencies injected) and the small modules it
-uses. `main.ts` and `settings.ts` are Obsidian glue: keep logic out of them so it stays
-testable without Obsidian.
+`updateFeed` (`pipeline.ts`) is one update as a plain function, with its dependencies passed in. The
+runner and the pipeline are tested without Obsidian. `main.ts` and `settings.ts` are Obsidian glue: keep
+logic out of them.
 
 ## Publish internals (from the Obsidian 1.14.4 app bundle and a live site, undocumented)
 

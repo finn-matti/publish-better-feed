@@ -1,28 +1,31 @@
-import { Notice, Plugin, parseYaml } from 'obsidian';
-import { createDebouncer } from './debounce';
+import { Notice, Plugin, debounce, parseYaml } from 'obsidian';
 import { pushFile, readFeed } from './github';
 import { liveText } from './live';
 import { metaResolver } from './notes';
 import { fetchPermalinks } from './permalinks';
+import { updateFeed, type FeedDeps } from './pipeline';
 import { getPublishInstance, hookPublish } from './publish';
 import { createRenderer } from './render';
-import { FeedService } from './service';
-import { assetBase } from './urls';
+import { FeedRunner } from './runner';
 import { FeedSettingTab } from './settings';
 import { DEFAULT_SETTINGS, type FeedSettings } from './settings-model';
+import { assetBase } from './urls';
 
-// lol
+/**
+ * How it runs:
+ *  1. `onload` loads settings, creates the runner and the command, and, once Obsidian's layout is
+ *     ready, installs the hook on the core Publish plugin.
+ *  2. The hook tells the runner that something was published (`requestUpdate`).
+ *  3. The runner waits for quiet, then runs `updateFeed` (pipeline.ts): read the old feed, ask
+ *     Publish what is live, build the entries and the Atom file, push it to GitHub.
+ */
 export default class FeedPlugin extends Plugin {
 	settings!: FeedSettings;
-	private service!: FeedService;
-	private debouncer = createDebouncer(
-		() => void this.service.rebuild(false),
-		() => this.settings.debounceSeconds * 1000,
-	);
+	private runner!: FeedRunner;
 
 	async onload() {
 		await this.loadSettings();
-		this.service = new FeedService({
+		const deps: FeedDeps = {
 			getSettings: () => this.settings,
 			getInstance: () => getPublishInstance(this.app),
 			getToken: (name) => this.app.secretStorage.getSecret(name),
@@ -52,20 +55,25 @@ export default class FeedPlugin extends Plugin {
 			fetchPermalinks,
 			readFeed,
 			push: pushFile,
+		};
+		this.runner = new FeedRunner({
+			update: (manual) => updateFeed(deps, manual),
+			debounce: (fn, ms) => debounce(fn, ms, true),
 			notify: (message) => new Notice(message),
 			logError: (e) => console.error('Publish feed:', e),
 		});
+
 		this.addSettingTab(new FeedSettingTab(this.app, this));
 		this.addCommand({
 			id: 'rebuild-feed',
 			name: 'Rebuild feed',
-			callback: () => void this.service.rebuild(true),
+			callback: () => void this.runner.updateNow(),
 		});
 		this.app.workspace.onLayoutReady(() => this.installHook());
 	}
 
 	onunload() {
-		this.debouncer.cancel();
+		this.runner.cancel();
 	}
 
 	private installHook() {
@@ -78,7 +86,7 @@ export default class FeedPlugin extends Plugin {
 		}
 		this.register(
 			hookPublish(inst, () => {
-				if (this.settings.autoPush) this.debouncer.schedule();
+				if (this.settings.autoPush) this.runner.requestUpdate();
 			}),
 		);
 	}

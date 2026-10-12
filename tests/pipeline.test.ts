@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { FeedFile, GithubTarget, PushResult } from '../src/github';
-import { FeedService, type ServiceDeps as FeedDeps } from '../src/service';
+import { updateFeed, type FeedDeps } from '../src/pipeline';
 import { DEFAULT_SETTINGS } from '../src/settings-model';
 import { mockPublish } from './mock-publish';
 
@@ -14,8 +14,6 @@ function setup(overrides: Partial<FeedDeps> = {}, files = FILES) {
 	const readFeed = vi.fn<(t: GithubTarget) => Promise<FeedFile>>(() =>
 		Promise.resolve({ sha: null, text: null }),
 	);
-	const notify = vi.fn();
-	const logError = vi.fn();
 	const deps: FeedDeps = {
 		getSettings: () => ({
 			...DEFAULT_SETTINGS,
@@ -30,17 +28,15 @@ function setup(overrides: Partial<FeedDeps> = {}, files = FILES) {
 		fetchPermalinks: () => Promise.resolve(new Map()),
 		readFeed,
 		push,
-		notify,
-		logError,
 		...overrides,
 	};
-	return { service: new FeedService(deps), push, readFeed, notify, logError };
+	return { service: { update: (manual: boolean) => updateFeed(deps, manual) }, push, readFeed };
 }
 
-describe('FeedService.rebuild', () => {
-	it('builds the feed, pushes it and reports a manual run', async () => {
-		const { service, push, notify } = setup();
-		await service.rebuild(true);
+describe('updateFeed', () => {
+	it('builds the feed, pushes it and says what happened', async () => {
+		const { service, push } = setup();
+		expect(await service.update(true)).toBe('updated (2 entries)');
 		const [target, xml, message] = push.mock.calls[0]!;
 		expect(target).toEqual({
 			token: 'secret',
@@ -52,19 +48,11 @@ describe('FeedService.rebuild', () => {
 		expect(message).toBe('Update feed');
 		expect(xml).toContain('<title>b.md</title>');
 		expect(xml).toContain('https://publish.obsidian.md/my-slug/a');
-		expect(notify).toHaveBeenCalledWith('Publish feed: updated (2 entries)');
-	});
-
-	it('stays quiet on a successful automatic run', async () => {
-		const { service, push, notify } = setup();
-		await service.rebuild(false);
-		expect(push).toHaveBeenCalledTimes(1);
-		expect(notify).not.toHaveBeenCalled();
 	});
 
 	it('uses the author setting, falling back to the feed title', async () => {
 		const { service, push } = setup();
-		await service.rebuild(false);
+		await service.update(false);
 		expect(push.mock.calls[0]![1]).toContain('<author><name>My feed</name></author>');
 		const custom = setup({
 			getSettings: () => ({
@@ -75,7 +63,7 @@ describe('FeedService.rebuild', () => {
 				feedAuthor: 'Me',
 			}),
 		});
-		await custom.service.rebuild(false);
+		await custom.service.update(false);
 		expect(custom.push.mock.calls[0]![1]).toContain('<author><name>Me</name></author>');
 	});
 
@@ -87,49 +75,26 @@ describe('FeedService.rebuild', () => {
 			{ getSettings: () => ({ ...DEFAULT_SETTINGS, tokenSecretName: 'tok' }) },
 			'owner and repository',
 		],
-	])('reports a failure when %s', async (_name, override, text) => {
-		const { service, push, notify, logError } = setup(override);
-		await service.rebuild(false);
+	])('throws a readable error when %s, before touching GitHub', async (_name, override, text) => {
+		const { service, push, readFeed } = setup(override);
+		await expect(service.update(false)).rejects.toThrow(text);
+		expect(readFeed).not.toHaveBeenCalled();
 		expect(push).not.toHaveBeenCalled();
-		expect(logError).toHaveBeenCalledTimes(1);
-		expect(notify).toHaveBeenCalledWith(expect.stringContaining(text));
 	});
 
-	it('reports a failed push and recovers on the next run', async () => {
-		const { service, push, notify } = setup();
+	it('lets a failed push through, and the next update works', async () => {
+		const { service, push } = setup();
 		push.mockRejectedValueOnce(new Error('boom'));
-		await service.rebuild(false);
-		expect(notify).toHaveBeenCalledWith('Publish feed failed: boom');
-		await service.rebuild(true);
-		expect(notify).toHaveBeenLastCalledWith('Publish feed: updated (2 entries)');
+		await expect(service.update(false)).rejects.toThrow('boom');
+		expect(await service.update(true)).toBe('updated (2 entries)');
 	});
 
 	it('does not push an empty feed automatically, but does when run manually', async () => {
-		const { service, push, notify } = setup({}, []);
-		await service.rebuild(false);
+		const { service, push } = setup({}, []);
+		expect(await service.update(false)).toMatch(/^skipped/);
 		expect(push).not.toHaveBeenCalled();
-		expect(notify).not.toHaveBeenCalled();
-		await service.rebuild(true);
+		expect(await service.update(true)).toBe('updated (0 entries)');
 		expect(push).toHaveBeenCalledTimes(1);
-	});
-
-	it('runs one at a time and queues a single rerun', async () => {
-		const { service, push } = setup();
-		let release!: () => void;
-		push.mockImplementationOnce(
-			() => new Promise<PushResult>((resolve) => (release = () => resolve('updated'))),
-		);
-		const first = service.rebuild(false);
-		await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(1));
-		void service.rebuild(false);
-		void service.rebuild(false);
-		await Promise.resolve();
-		expect(push).toHaveBeenCalledTimes(1);
-		release();
-		await first;
-		await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(2));
-		await new Promise((r) => globalThis.setTimeout(r, 10));
-		expect(push).toHaveBeenCalledTimes(2);
 	});
 
 	it('asks for full text unless the content mode is summary', async () => {
@@ -150,8 +115,8 @@ describe('FeedService.rebuild', () => {
 					return (f) => Promise.resolve({ title: f.path, summary: '' });
 				},
 			});
-		await make('full').service.rebuild(false);
-		await make('summary').service.rebuild(false);
+		await make('full').service.update(false);
+		await make('summary').service.update(false);
 		expect(seen).toEqual([true, false]);
 	});
 
@@ -159,7 +124,7 @@ describe('FeedService.rebuild', () => {
 		const snapshot = { sha: 'abc', text: null };
 		const { service, push, readFeed } = setup();
 		readFeed.mockResolvedValueOnce(snapshot);
-		await service.rebuild(false);
+		await service.update(false);
 		expect(push.mock.calls[0]![3]).toBe(snapshot);
 	});
 
@@ -183,7 +148,7 @@ describe('FeedService.rebuild', () => {
 				}),
 			});
 			s.readFeed.mockResolvedValueOnce({ sha: 's', text: previous(B_ID, prevMs) });
-			await s.service.rebuild(false);
+			await s.service.update(false);
 			return s.push.mock.calls[0]![1];
 		};
 
@@ -213,7 +178,7 @@ describe('FeedService.rebuild', () => {
 				return (f) => Promise.resolve({ title: f.path, summary: '' });
 			},
 		});
-		await service.rebuild(false);
+		await service.update(false);
 		const xml = push.mock.calls[0]![1];
 		expect(seen?.get('a.md')).toBe('custom/a');
 		expect(xml).toContain('<id>https://publish.obsidian.md/my-slug/a</id>');

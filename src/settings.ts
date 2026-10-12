@@ -112,17 +112,5 @@ export class FeedSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}),
 			);
-		new Setting(containerEl)
-			.setName('Delay (seconds)')
-			.setDesc('Wait this long after the last upload or removal.')
-			.addText((t) =>
-				t.setValue(String(s.debounceSeconds)).onChange(async (v) => {
-					const n = parseInt(v, 10);
-					if (n >= 0) {
-						s.debounceSeconds = n;
-						await this.plugin.saveSettings();
-					}
-				}),
-			);
 	}
 }
