@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SetupError } from '../src/pipeline';
-import { FeedRunner, QUIET_MS, type Debounced, type RunnerDeps, type Status } from '../src/runner';
+import { FeedRunner, QUIET_MS, type Debounced, type RunnerDeps } from '../src/runner';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -17,28 +17,30 @@ const debounce = (fn: () => void, ms: number): Debounced => {
 };
 
 function setup(update: RunnerDeps['update'] = () => Promise.resolve('updated (2 entries)')) {
-	const notify = vi.fn();
+	const events: string[] = [];
+	const notify = vi.fn((m: string) => events.push(`notice: ${m}`));
 	const logError = vi.fn();
 	const updateSpy = vi.fn(update);
-	const statuses: Status[] = [];
 	const dirty: boolean[] = [];
 	const runner = new FeedRunner({
 		update: updateSpy,
 		debounce,
+		showProgress: (m) => {
+			events.push(`progress: ${m}`);
+			return () => events.push('progress hidden');
+		},
 		notify,
 		logError,
-		onStatus: (s) => statuses.push(s),
 		setDirty: (d) => dirty.push(d),
-		now: () => new Date(2026, 9, 12, 14, 5),
 	});
-	return { runner, update: updateSpy, notify, logError, statuses, dirty };
+	return { runner, update: updateSpy, notify, logError, events, dirty };
 }
 
 const seconds = (n: number) => vi.advanceTimersByTimeAsync(n * 1000);
 
 describe('FeedRunner', () => {
 	it('starts idle, waits after a publish, updates once it has been quiet, then is idle again', async () => {
-		const { runner, update, notify } = setup();
+		const { runner, update } = setup();
 		expect(runner.state).toBe('idle');
 		runner.requestUpdate();
 		expect(runner.state).toBe('waiting');
@@ -47,7 +49,6 @@ describe('FeedRunner', () => {
 		await seconds(1);
 		expect(update).toHaveBeenCalledWith(false);
 		expect(runner.state).toBe('idle');
-		expect(notify).not.toHaveBeenCalled();
 	});
 
 	it('turns a burst of uploads into one update, ten seconds after the last', async () => {
@@ -109,12 +110,11 @@ describe('FeedRunner', () => {
 		expect(runner.state).toBe('idle');
 	});
 
-	it('updateNow runs at once, reports the outcome and drops the pending wait', async () => {
-		const { runner, update, notify } = setup();
+	it('updateNow runs at once and drops the pending wait', async () => {
+		const { runner, update } = setup();
 		runner.requestUpdate();
 		await runner.updateNow();
 		expect(update).toHaveBeenCalledWith(true);
-		expect(notify).toHaveBeenCalledWith('Publish feed: updated (2 entries)');
 		expect(runner.state).toBe('idle');
 		await seconds(30);
 		expect(update).toHaveBeenCalledTimes(1);
@@ -122,25 +122,15 @@ describe('FeedRunner', () => {
 
 	it('updateNow during an update does not start a second one', async () => {
 		let finish!: () => void;
-		const { runner, update, notify } = setup(() => new Promise((resolve) => (finish = () => resolve('ok'))));
+		const { runner, update, notify } = setup(
+			() => new Promise((resolve) => (finish = () => resolve('ok'))),
+		);
 		const first = runner.updateNow();
 		await runner.updateNow();
 		expect(update).toHaveBeenCalledTimes(1);
 		expect(notify).toHaveBeenCalledWith('Publish feed: already updating');
 		finish();
 		await first;
-	});
-
-	it('reports a failure and recovers on the next update', async () => {
-		const { runner, update, notify, logError } = setup();
-		update.mockRejectedValueOnce(new Error('boom'));
-		runner.requestUpdate();
-		await seconds(10);
-		expect(logError).toHaveBeenCalledTimes(1);
-		expect(notify).toHaveBeenCalledWith('Publish feed failed: boom');
-		expect(runner.state).toBe('idle');
-		await runner.updateNow();
-		expect(notify).toHaveBeenLastCalledWith('Publish feed: updated (2 entries)');
 	});
 
 	it('cancel stops a pending update', async () => {
@@ -153,25 +143,37 @@ describe('FeedRunner', () => {
 	});
 });
 
-describe('FeedRunner status', () => {
-	it('reports waiting, running, then idle with the result of the update', async () => {
-		const { runner, statuses } = setup();
+describe('FeedRunner notices', () => {
+	it('shows a notice while updating, hides it, then reports the result, for automatic updates too', async () => {
+		const { runner, events } = setup();
 		runner.requestUpdate();
 		await seconds(10);
-		expect(statuses.map((s) => s.state)).toEqual(['waiting', 'running', 'idle']);
-		expect(statuses[2]?.last).toEqual({
-			at: new Date(2026, 9, 12, 14, 5),
-			ok: true,
-			message: 'updated (2 entries)',
-		});
-		expect(runner.status).toEqual(statuses[2]);
+		expect(events).toEqual([
+			'progress: Publish feed: updating…',
+			'progress hidden',
+			'notice: Publish feed: updated (2 entries)',
+		]);
 	});
 
-	it('reports a failed update with its message', async () => {
-		const { runner, update, statuses } = setup();
+	it('hides the progress notice and reports the error when the update fails', async () => {
+		const { runner, update, events, logError } = setup();
 		update.mockRejectedValueOnce(new Error('GitHub PUT failed (401)'));
 		await runner.updateNow();
-		expect(statuses.at(-1)?.last).toMatchObject({ ok: false, message: 'GitHub PUT failed (401)' });
+		expect(events).toEqual([
+			'progress: Publish feed: updating…',
+			'progress hidden',
+			'notice: Publish feed failed: GitHub PUT failed (401)',
+		]);
+		expect(logError).toHaveBeenCalledTimes(1);
+		expect(runner.state).toBe('idle');
+	});
+
+	it('recovers after a failure', async () => {
+		const { runner, update, notify } = setup();
+		update.mockRejectedValueOnce(new Error('boom'));
+		await runner.updateNow();
+		await runner.updateNow();
+		expect(notify).toHaveBeenLastCalledWith('Publish feed: updated (2 entries)');
 	});
 });
 
@@ -202,7 +204,9 @@ describe('FeedRunner owes an update until one succeeds', () => {
 
 	it('is still owed when another publish arrived during the update', async () => {
 		let finish!: () => void;
-		const { runner, dirty } = setup(() => new Promise((resolve) => (finish = () => resolve('ok'))));
+		const { runner, dirty } = setup(
+			() => new Promise((resolve) => (finish = () => resolve('ok'))),
+		);
 		runner.requestUpdate();
 		await seconds(10);
 		runner.requestUpdate();

@@ -19,8 +19,8 @@ nothing (checked with NetNewsWire's Reader View). Full text in the feed is what 
    (`ob` CLI, other devices).
 2. `FeedRunner` (`runner.ts`) owns the lifecycle: idle, waiting (10 s without another upload, via
    Obsidian's `debounce`), running. Updates never overlap; a publish during one starts the wait again.
-   The status bar shows the state (`status.ts`; click = update now). A publish with no successful update
-   since is saved as `pendingUpdate` and finished at the next start (`SetupError`s don't count).
+   A notice shows while an update runs and how it went. A publish with no successful update since is
+   saved as `pendingUpdate` and finished at the next start (`SetupError`s don't count).
 3. Build Atom from `apiList()` (what's live and when) plus the verified published text of each
    note: a summary and, by default, the full text as HTML (`render.ts`: `mdast-util-from-markdown` with the GFM and math extensions and the syntaxes of
    `@quartz-community/remark-obsidian`, then our own small HTML serializer; no unified/rehype).

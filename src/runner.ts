@@ -11,27 +11,20 @@ export interface Debounced {
 	cancel(): void;
 }
 
-/** What the interface shows: where the runner is, and how the last update went. */
-export interface Status {
-	state: RunState;
-	last?: { at: Date; ok: boolean; message: string };
-}
-
 export interface RunnerDeps {
 	/** One update, start to finish (`updateFeed`). Throws if it can't. */
 	update: (manual: boolean) => Promise<string>;
 	/** Obsidian's `debounce`, passed in so tests can use their own timer. */
 	debounce: (fn: () => void, ms: number) => Debounced;
+	/** Shows a notice that stays until the returned function is called. */
+	showProgress: (message: string) => () => void;
 	notify: (message: string) => void;
 	logError: (error: unknown) => void;
-	/** Called whenever the state or the last result changes. */
-	onStatus?: (status: Status) => void;
 	/**
 	 * True from the moment a publish is seen until an update succeeds, so it can be saved and
 	 * an update interrupted by closing Obsidian is finished at the next start.
 	 */
 	setDirty?: (dirty: boolean) => void;
-	now?: () => Date;
 }
 
 /**
@@ -40,12 +33,12 @@ export interface RunnerDeps {
  *   idle --publish--> waiting (until 10 s pass without another upload) --> running --> idle
  *
  * A publish while an update is running just starts the wait again. The next update starts when
- * things have been quiet and the current one is done, so updates never overlap.
+ * things have been quiet and the current one is done, so updates never overlap. While one runs, a
+ * notice says so; when it ends, a notice says how it went.
  */
 export class FeedRunner {
 	private running = false;
 	private waiting = false;
-	private last: Status['last'];
 	private readonly soon: Debounced;
 
 	constructor(private deps: RunnerDeps) {
@@ -56,19 +49,14 @@ export class FeedRunner {
 		return this.running ? 'running' : this.waiting ? 'waiting' : 'idle';
 	}
 
-	get status(): Status {
-		return { state: this.state, last: this.last };
-	}
-
 	/** Something was published: update once it has been quiet for a while. */
 	requestUpdate(): void {
 		this.waiting = true;
 		this.deps.setDirty?.(true);
 		this.soon();
-		this.report();
 	}
 
-	/** The user asked for an update right now. Reports the outcome. */
+	/** The user asked for an update right now. */
 	async updateNow(): Promise<void> {
 		if (this.running) {
 			this.deps.notify('Publish feed: already updating');
@@ -85,14 +73,6 @@ export class FeedRunner {
 		this.waiting = false;
 	}
 
-	private report(): void {
-		this.deps.onStatus?.(this.status);
-	}
-
-	private finished(ok: boolean, message: string): void {
-		this.last = { at: (this.deps.now ?? (() => new Date()))(), ok, message };
-	}
-
 	private waitIsOver(): void {
 		this.waiting = false;
 		if (this.running) this.requestUpdate();
@@ -101,23 +81,22 @@ export class FeedRunner {
 
 	private async run(manual: boolean): Promise<void> {
 		this.running = true;
-		this.report();
+		const hideProgress = this.deps.showProgress('Publish feed: updating…');
+		let message: string;
 		try {
 			const result = await this.deps.update(manual);
-			this.finished(true, result);
 			// A publish that arrived meanwhile still needs an update.
 			if (!this.waiting) this.deps.setDirty?.(false);
-			if (manual) this.deps.notify(`Publish feed: ${result}`);
+			message = `Publish feed: ${result}`;
 		} catch (e) {
-			const message = e instanceof Error ? e.message : String(e);
-			this.finished(false, message);
 			// A failure keeps the update owed, unless only the user can fix it.
 			if (e instanceof SetupError && !this.waiting) this.deps.setDirty?.(false);
 			this.deps.logError(e);
-			this.deps.notify(`Publish feed failed: ${message}`);
+			message = `Publish feed failed: ${e instanceof Error ? e.message : String(e)}`;
 		} finally {
 			this.running = false;
-			this.report();
+			hideProgress();
 		}
+		this.deps.notify(message);
 	}
 }
