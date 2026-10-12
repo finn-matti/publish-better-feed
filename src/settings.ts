@@ -54,6 +54,20 @@ export class FeedSettingTab extends PluginSettingTab {
 					}),
 			);
 		new Setting(containerEl)
+			.setName('Update cooldown (hours)')
+			.setDesc(
+				'A note moves to the top of the feed at most once per this time. Publishing sooner updates its text but not its position. Set it to zero to show every publish.',
+			)
+			.addText((t) =>
+				t.setValue(String(s.cooldownHours)).onChange(async (v) => {
+					const n = parseFloat(v);
+					if (n >= 0) {
+						s.cooldownHours = n;
+						await this.plugin.saveSettings();
+					}
+				}),
+			);
+		new Setting(containerEl)
 			.setName('Maximum entries')
 			.addText((t) =>
 				t.setValue(String(s.maxEntries)).onChange(async (v) => {

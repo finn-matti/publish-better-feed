@@ -1,6 +1,6 @@
 import { buildEntries } from './entries';
 import { buildAtom } from './feed';
-import type { GithubTarget, PushResult } from './github';
+import type { FeedFile, GithubTarget, PushResult } from './github';
 import type { MetaResolver } from './notes';
 import {
 	parsePublishList,
@@ -8,6 +8,7 @@ import {
 	type PublishFile,
 	type PublishInstance,
 } from './publish';
+import { parseFeedState } from './state';
 import { feedUrl, type FeedSettings } from './settings-model';
 
 export interface FeedDeps {
@@ -18,10 +19,12 @@ export interface FeedDeps {
 		inst: PublishInstance,
 		ctx: { siteUrl: string; files: PublishFile[]; full: boolean },
 	) => MetaResolver;
+	readFeed: (target: GithubTarget) => Promise<FeedFile>;
 	push: (
 		target: GithubTarget,
 		content: string,
 		message: string,
+		current: FeedFile,
 	) => Promise<PushResult>;
 	notify: (message: string) => void;
 	logError: (error: unknown) => void;
@@ -73,11 +76,23 @@ export class FeedService {
 			throw new Error('GitHub owner and repository are required');
 		}
 
+		const target: GithubTarget = {
+			token,
+			owner: s.githubOwner,
+			repo: s.githubRepo,
+			branch: s.githubBranch,
+			path: s.feedPath,
+		};
+		// The previous feed tells us when each note last surfaced (see `surfaceTime`).
+		const current = await this.deps.readFeed(target);
+
 		const siteUrl = await resolveSiteUrl(inst);
 		const files = parsePublishList(await inst.apiList());
 		const entries = await buildEntries(files, {
 			siteUrl,
 			maxEntries: s.maxEntries,
+			previous: parseFeedState(current.text),
+			cooldownMs: Math.max(0, s.cooldownHours) * 3_600_000,
 			resolve: this.deps.createMetaResolver(inst, {
 				siteUrl,
 				files,
@@ -97,17 +112,7 @@ export class FeedService {
 			},
 			entries,
 		);
-		const outcome = await this.deps.push(
-			{
-				token,
-				owner: s.githubOwner,
-				repo: s.githubRepo,
-				branch: s.githubBranch,
-				path: s.feedPath,
-			},
-			xml,
-			'Update feed',
-		);
+		const outcome = await this.deps.push(target, xml, 'Update feed', current);
 		return `${outcome} (${entries.length} entries)`;
 	}
 }

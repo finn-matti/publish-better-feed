@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   highlights, callouts and tags are converted; comments and frontmatter are removed; links and
   images only point at published files.
 - Automatic update a few seconds after a publish run, by observing the core Publish plugin.
+- Update cooldown (24 hours by default, 0 to show every publish): a note moves to the top of the
+  feed at most once per cooldown, while its text always stays current.
 - "Rebuild feed" command, which also picks up changes published from elsewhere.
 - Push to a GitHub repository served by GitHub Pages as `feed.atom`; no commit when the
   feed is unchanged.

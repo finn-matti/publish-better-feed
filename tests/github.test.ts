@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const requestUrl = vi.fn<(p: unknown) => Promise<unknown>>();
 vi.mock('obsidian', () => ({ requestUrl: (p: unknown) => requestUrl(p) }));
 
-import { pushFile } from '../src/github';
+import { pushFile, readFeed } from '../src/github';
 import { gitBlobSha } from '../src/hash';
 
 const target = { token: 't', owner: 'o', repo: 'r', branch: 'main', path: 'feed.atom' };
@@ -69,5 +69,65 @@ describe('pushFile', () => {
 		const get = req(0);
 		expect(get.headers['Cache-Control']).toBe('no-cache');
 		expect(get.url).toMatch(/[?&]_=\d+/);
+	});
+});
+
+describe('readFeed', () => {
+	const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+
+	it('returns the sha and decoded text, including non-ASCII', async () => {
+		requestUrl.mockResolvedValueOnce(
+			res(200, { sha: 's1', encoding: 'base64', content: b64('Ünï & more\n') }),
+		);
+		expect(await readFeed(target)).toEqual({ sha: 's1', text: 'Ünï & more\n' });
+	});
+
+	it('reports a missing file as null', async () => {
+		requestUrl.mockResolvedValueOnce(res(404));
+		expect(await readFeed(target)).toEqual({ sha: null, text: null });
+	});
+
+	it('fetches the raw text when the file is too large for the JSON response', async () => {
+		requestUrl
+			.mockResolvedValueOnce(res(200, { sha: 's2', encoding: 'none', content: '' }))
+			.mockResolvedValueOnce({ status: 200, json: null, text: 'big file text' });
+		expect(await readFeed(target)).toEqual({ sha: 's2', text: 'big file text' });
+		expect(req(1).headers.Accept).toBe('application/vnd.github.raw+json');
+	});
+
+	it('throws on a failed GET and bypasses the cache', async () => {
+		requestUrl.mockResolvedValueOnce(res(500));
+		await expect(readFeed(target)).rejects.toThrow('500');
+		expect(req(0).headers['Cache-Control']).toBe('no-cache');
+	});
+});
+
+describe('pushFile with a snapshot', () => {
+	it('does not read the file again', async () => {
+		requestUrl.mockResolvedValueOnce(res(200));
+		expect(await pushFile(target, 'x', 'msg', { sha: 'old', text: 'o' })).toBe('updated');
+		expect(requestUrl).toHaveBeenCalledTimes(1);
+		expect(putBody(0).sha).toBe('old');
+	});
+
+	it('creates the file when the snapshot says it does not exist', async () => {
+		requestUrl.mockResolvedValueOnce(res(201));
+		expect(await pushFile(target, 'x', 'msg', { sha: null, text: null })).toBe('created');
+		expect(putBody(0).sha).toBeUndefined();
+	});
+
+	it('skips the commit when the snapshot already has this content', async () => {
+		const sha = await gitBlobSha(new TextEncoder().encode('same'));
+		expect(await pushFile(target, 'same', 'msg', { sha, text: 'same' })).toBe('unchanged');
+		expect(requestUrl).not.toHaveBeenCalled();
+	});
+
+	it('refetches the sha when the snapshot has gone stale', async () => {
+		requestUrl
+			.mockResolvedValueOnce(res(409))
+			.mockResolvedValueOnce(res(200, { sha: 'fresh' }))
+			.mockResolvedValueOnce(res(200));
+		expect(await pushFile(target, 'x', 'msg', { sha: 'stale', text: null })).toBe('updated');
+		expect(putBody(2).sha).toBe('fresh');
 	});
 });

@@ -86,6 +86,40 @@ describe('buildAtom', () => {
 	});
 });
 
+describe('buildEntries cooldown and order', () => {
+	const resolve = (f: { path: string }) => Promise.resolve({ title: f.path, summary: '' });
+	const base = { siteUrl: 'https://x.test', maxEntries: 10, resolve };
+	const A = 1_700_000_000_000;
+	const B = A + 3_600_000;
+
+	it('orders by when entries surfaced, not by the last publish', async () => {
+		const previous = new Map([['https://x.test/b', new Date(B - 600_000)]]);
+		const entries = await buildEntries([file('a.md', A), file('b.md', B)], {
+			...base,
+			previous,
+			cooldownMs: 86_400_000,
+		});
+		expect(entries.map((e) => e.title)).toEqual(['b.md', 'a.md']);
+		const held = await buildEntries([file('a.md', A), file('b.md', B)], {
+			...base,
+			previous: new Map([['https://x.test/b', new Date(A - 1000)]]),
+			cooldownMs: 86_400_000,
+		});
+		expect(held.map((e) => e.title)).toEqual(['a.md', 'b.md']);
+		expect(held[1]?.updated.getTime()).toBe(A - 1000);
+	});
+
+	it('keeps published as the first publish time and applies maxEntries after ordering', async () => {
+		const entries = await buildEntries([file('a.md', A, A - 5000), file('b.md', B), file('c.md', B + 1)], {
+			...base,
+			maxEntries: 2,
+		});
+		expect(entries.map((e) => e.title)).toEqual(['c.md', 'b.md']);
+		const [first] = await buildEntries([file('a.md', A, A - 5000)], base);
+		expect(first?.published.getTime()).toBe(A - 5000);
+	});
+});
+
 describe('buildAtom content', () => {
 	it('emits escaped HTML content when present', async () => {
 		const entries = await buildEntries([file('a.md', 1_700_000_000_000)], {

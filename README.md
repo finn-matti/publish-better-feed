@@ -13,6 +13,11 @@ summaries and lists oldest first. This plugin builds a proper feed instead.
    summary from the `description` property or the first paragraph).
 3. It pushes `feed.atom` to a GitHub repository served by GitHub Pages.
 
+A note moves to the top of the feed at most once per cooldown (24 hours by default, see the
+settings; zero shows every publish). Publishing again sooner still updates the note's text in the
+feed, but not its position, so fixing a typo doesn't resurface it. The feed itself records when each
+note last surfaced.
+
 The feed carries each note's published text as HTML (or only a summary, see the Content
 setting). Links and embeds only point at published files, links to unpublished notes become
 plain text, and comments and frontmatter are removed.

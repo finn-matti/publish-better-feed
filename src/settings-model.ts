@@ -8,6 +8,7 @@ export interface FeedSettings {
 	feedTitle: string;
 	feedAuthor: string;
 	contentMode: 'summary' | 'full';
+	cooldownHours: number;
 	maxEntries: number;
 	autoPush: boolean;
 	debounceSeconds: number;
@@ -22,6 +23,7 @@ export const DEFAULT_SETTINGS: FeedSettings = {
 	feedTitle: 'Recent changes',
 	feedAuthor: '',
 	contentMode: 'full',
+	cooldownHours: 24,
 	maxEntries: 50,
 	autoPush: true,
 	debounceSeconds: 10,

@@ -22,6 +22,10 @@ nothing (checked with NetNewsWire's Reader View). Full text in the feed is what 
    note: a summary and, by default, the full text as HTML (`render.ts`, unified + `@quartz-community/remark-obsidian`).
 4. Push `feed.atom` to a GitHub repo served by GitHub Pages (Contents API).
 
+The previous feed is the only state: each entry's `updated` is when it last surfaced. A note moves to
+the top at most once per cooldown (24 h by default, 0 = every publish); publishing sooner refreshes its
+text but not its position (`state.ts`, `surfaceTime`). `published` is the first publish time.
+
 Logic lives in `service.ts` (`FeedService`, dependencies injected) and the small modules it
 uses. `main.ts` and `settings.ts` are Obsidian glue: keep logic out of them so it stays
 testable without Obsidian.
@@ -88,13 +92,15 @@ then grep `app.js` (identifiers are minified, property and string names are not)
 - Check the `@since` tag of any newly used API against `minAppVersion`.
 - GitHub Contents API: the GET for the current `sha` must bypass HTTP caches
   (`Cache-Control: no-cache` plus a cache-busting query), otherwise a stale sha gives a 409.
+- The Contents API JSON has no `content` over 1 MB; `readFeed` then fetches the raw text
+  (`Accept: application/vnd.github.raw+json`). The feed is read once per run and passed to the push.
 - Name the feed `*.atom`: Pages serves it as `application/atom+xml`, `.xml` as `application/xml`.
 - README needs a network-use disclosure (GitHub API, Publish API via the instance).
 
 ## Open decisions
 
-- One entry per note (current) vs. per change. Per-change needs a persisted snapshot of
-  `apiList()` and gives crossposting tools new IDs.
+- One entry per note (current) vs. per change. Per-change needs persisted history and gives
+  crossposting tools new IDs. A change inside the cooldown only surfaces at the next publish.
 - Inline note embeds (Publish inlines them; we link to them).
 - Noise filtering (renames, opt-in per change).
 

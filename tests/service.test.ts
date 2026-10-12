@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { GithubTarget, PushResult } from '../src/github';
+import type { FeedFile, GithubTarget, PushResult } from '../src/github';
 import { FeedService, type FeedDeps } from '../src/service';
 import { DEFAULT_SETTINGS } from '../src/settings-model';
 import { mockPublish } from './mock-publish';
@@ -8,8 +8,11 @@ const file = (path: string, mtime: number) => ({ path, hash: 'h', ctime: mtime, 
 const FILES = [file('a.md', 1_700_000_000_000), file('b.md', 1_700_000_100_000)];
 
 function setup(overrides: Partial<FeedDeps> = {}, files = FILES) {
-	const push = vi.fn<(t: GithubTarget, c: string, m: string) => Promise<PushResult>>(() =>
-		Promise.resolve('updated'),
+	const push = vi.fn<(t: GithubTarget, c: string, m: string, cur: FeedFile) => Promise<PushResult>>(
+		() => Promise.resolve('updated'),
+	);
+	const readFeed = vi.fn<(t: GithubTarget) => Promise<FeedFile>>(() =>
+		Promise.resolve({ sha: null, text: null }),
 	);
 	const notify = vi.fn();
 	const logError = vi.fn();
@@ -24,12 +27,13 @@ function setup(overrides: Partial<FeedDeps> = {}, files = FILES) {
 		getInstance: () => mockPublish(files),
 		getToken: () => 'secret',
 		createMetaResolver: () => (f) => Promise.resolve({ title: f.path, summary: '' }),
+		readFeed,
 		push,
 		notify,
 		logError,
 		...overrides,
 	};
-	return { service: new FeedService(deps), push, notify, logError };
+	return { service: new FeedService(deps), push, readFeed, notify, logError };
 }
 
 describe('FeedService.rebuild', () => {
@@ -148,5 +152,54 @@ describe('FeedService.rebuild', () => {
 		await make('full').service.rebuild(false);
 		await make('summary').service.rebuild(false);
 		expect(seen).toEqual([true, false]);
+	});
+
+	it('hands the snapshot it read to the push', async () => {
+		const snapshot = { sha: 'abc', text: null };
+		const { service, push, readFeed } = setup();
+		readFeed.mockResolvedValueOnce(snapshot);
+		await service.rebuild(false);
+		expect(push.mock.calls[0]![3]).toBe(snapshot);
+	});
+
+	describe('cooldown', () => {
+		const iso = (ms: number) => new Date(ms).toISOString();
+		// b.md was last published an hour after a.md. Its previous feed entry surfaced 30 min earlier.
+		const previous = (id: string, ms: number) =>
+			`<feed><entry><id>${id}</id><updated>${iso(ms)}</updated></entry></feed>`;
+		const B = 1_700_000_100_000;
+		const B_ID = 'https://publish.obsidian.md/my-slug/b';
+		const updatedOf = (xml: string, id: string) =>
+			new RegExp(`<id>${id}</id>[\\s\\S]*?<updated>([^<]*)</updated>`).exec(xml)?.[1];
+		const run = async (cooldownHours: number, prevMs: number) => {
+			const s = setup({
+				getSettings: () => ({
+					...DEFAULT_SETTINGS,
+					githubOwner: 'o',
+					githubRepo: 'r',
+					tokenSecretName: 'tok',
+					cooldownHours,
+				}),
+			});
+			s.readFeed.mockResolvedValueOnce({ sha: 's', text: previous(B_ID, prevMs) });
+			await s.service.rebuild(false);
+			return s.push.mock.calls[0]![1];
+		};
+
+		it('keeps an entry in place when it was published again within the cooldown', async () => {
+			const xml = await run(24, B - 30 * 60_000);
+			expect(updatedOf(xml, B_ID)).toBe(iso(B - 30 * 60_000));
+			expect(xml.indexOf('<title>a.md</title>')).toBeLessThan(xml.indexOf('<title>b.md</title>'));
+		});
+
+		it('moves it to the top once the cooldown has passed', async () => {
+			const xml = await run(24, B - 25 * 3_600_000);
+			expect(updatedOf(xml, B_ID)).toBe(iso(B));
+			expect(xml.indexOf('<title>b.md</title>')).toBeLessThan(xml.indexOf('<title>a.md</title>'));
+		});
+
+		it('shows every publish when the cooldown is 0', async () => {
+			expect(updatedOf(await run(0, B - 30 * 60_000), B_ID)).toBe(iso(B));
+		});
 	});
 });

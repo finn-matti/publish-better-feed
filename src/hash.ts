@@ -24,3 +24,8 @@ export function toBase64(bytes: Uint8Array): string {
 export async function sha256Hex(bytes: BufferSource): Promise<string> {
 	return toHex(await crypto.subtle.digest('SHA-256', bytes));
 }
+
+export function fromBase64(b64: string): string {
+	const bin = atob(b64.replace(/\s/g, ''));
+	return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+}

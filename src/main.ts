@@ -1,6 +1,6 @@
 import { Notice, Plugin, parseYaml } from 'obsidian';
 import { createDebouncer } from './debounce';
-import { pushFile } from './github';
+import { pushFile, readFeed } from './github';
 import { liveText } from './live';
 import { metaResolver } from './notes';
 import { getPublishInstance, hookPublish } from './publish';
@@ -46,6 +46,7 @@ export default class FeedPlugin extends Plugin {
 					render,
 				);
 			},
+			readFeed,
 			push: pushFile,
 			notify: (message) => new Notice(message),
 			logError: (e) => console.error('Publish feed:', e),
