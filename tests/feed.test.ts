@@ -51,7 +51,7 @@ describe('buildEntries', () => {
 			{
 				siteUrl: 'https://x.test',
 				maxEntries: 10,
-				resolve: (p) => Promise.resolve({ title: p, summary: '' }),
+				resolve: (f) => Promise.resolve({ title: f.path, summary: '' }),
 			},
 		);
 		expect(entries.map((e) => e.title)).toEqual(['new.md', 'old.md']);

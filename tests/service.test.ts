@@ -23,7 +23,7 @@ function setup(overrides: Partial<FeedDeps> = {}, files = FILES) {
 		}),
 		getInstance: () => mockPublish(files),
 		getToken: () => 'secret',
-		resolveMeta: (path) => Promise.resolve({ title: path, summary: '' }),
+		createMetaResolver: () => (f) => Promise.resolve({ title: f.path, summary: '' }),
 		push,
 		notify,
 		logError,

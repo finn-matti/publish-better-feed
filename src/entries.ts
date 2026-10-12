@@ -35,7 +35,7 @@ export async function buildEntries(
 
 	const entries: FeedEntry[] = [];
 	for (const f of notes) {
-		const meta = await opts.resolve(f.path);
+		const meta = await opts.resolve(f);
 		const url = noteUrl(opts.siteUrl, f.path);
 		entries.push({
 			id: url,

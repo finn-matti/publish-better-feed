@@ -13,7 +13,7 @@ export interface FeedDeps {
 	getSettings: () => FeedSettings;
 	getInstance: () => PublishInstance | null;
 	getToken: (secretName: string) => string | null;
-	resolveMeta: MetaResolver;
+	createMetaResolver: (inst: PublishInstance) => MetaResolver;
 	push: (
 		target: GithubTarget,
 		content: string,
@@ -74,7 +74,7 @@ export class FeedService {
 		const entries = await buildEntries(files, {
 			siteUrl,
 			maxEntries: s.maxEntries,
-			resolve: this.deps.resolveMeta,
+			resolve: this.deps.createMetaResolver(inst),
 		});
 		// An empty list may be a bad response; don't let an automatic run wipe a good feed.
 		if (entries.length === 0 && !manual) {

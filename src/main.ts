@@ -2,7 +2,7 @@ import { Notice, Plugin } from 'obsidian';
 import { createDebouncer } from './debounce';
 import { pushFile } from './github';
 import { vaultMetaResolver } from './notes';
-import { getPublishInstance, hookPublish } from './publish';
+import { getPublishInstance, hookPublish, matchesLive } from './publish';
 import { FeedService } from './service';
 import { FeedSettingTab } from './settings';
 import { DEFAULT_SETTINGS, type FeedSettings } from './settings-model';
@@ -22,7 +22,8 @@ export default class FeedPlugin extends Plugin {
 			getSettings: () => this.settings,
 			getInstance: () => getPublishInstance(this.app),
 			getToken: (name) => this.app.secretStorage.getSecret(name),
-			resolveMeta: vaultMetaResolver(this.app),
+			createMetaResolver: (inst) =>
+				vaultMetaResolver(this.app, (file, hash) => matchesLive(inst, file, hash)),
 			push: pushFile,
 			notify: (message) => new Notice(message),
 			logError: (e) => console.error('Publish feed:', e),

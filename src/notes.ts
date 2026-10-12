@@ -1,11 +1,15 @@
 import type { App, TFile } from 'obsidian';
+import type { PublishFile } from './publish';
 
 export interface NoteMeta {
 	title: string;
 	summary: string;
 }
 
-export type MetaResolver = (path: string) => Promise<NoteMeta>;
+export type MetaResolver = (file: PublishFile) => Promise<NoteMeta>;
+
+/** Does the local file equal what is live? Local text must never reach the feed otherwise. */
+export type IsLive = (file: TFile, liveHash: string) => Promise<boolean>;
 
 const SUMMARY_MAX = 300;
 
@@ -31,19 +35,18 @@ export function firstParagraph(markdown: string): string {
 const str = (v: unknown): string | undefined =>
 	typeof v === 'string' && v.trim() ? v.trim() : undefined;
 
-export function vaultMetaResolver(app: App): MetaResolver {
-	return async (path) => {
-		const basename = path.replace(/^.*\//, '').replace(/\.md$/i, '');
-		const file = app.vault.getFileByPath(path);
-		if (!file) return { title: basename, summary: '' };
+export function vaultMetaResolver(app: App, isLive: IsLive): MetaResolver {
+	return async (live) => {
+		const basename = live.path.replace(/^.*\//, '').replace(/\.md$/i, '');
+		const file = app.vault.getFileByPath(live.path);
+		if (!file || !(await isLive(file, live.hash))) {
+			return { title: basename, summary: '' };
+		}
 		const fm = (app.metadataCache.getFileCache(file)?.frontmatter ??
 			{}) as Record<string, unknown>;
 		const summary =
 			str(fm.description) ?? firstParagraph(await readNote(app, file));
-		return {
-			title: str(fm.title) ?? basename,
-			summary,
-		};
+		return { title: str(fm.title) ?? basename, summary };
 	};
 }
 

@@ -56,6 +56,8 @@ then grep `app.js` (identifiers are minified, property and string names are not)
 - Never read or handle the account token. All Publish calls go through the instance.
 - Guard every internal access (existence and type checks). If the shape changes, disable
   the hook; "Rebuild feed" must keep working.
+- Feed content must be published content: local text (frontmatter title, summary) is used only
+  when `getHash(file)` equals the live hash from `apiList()`. Otherwise use the file name and no summary.
 - An automatic run with zero entries must not push (a bad `apiList()` would wipe the feed).
 - No Node APIs: `requestUrl` and `crypto.subtle`, so it works on mobile.
 - The GitHub token lives in SecretStorage (since 1.11.4, hence `minAppVersion`); settings
