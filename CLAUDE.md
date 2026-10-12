@@ -89,15 +89,14 @@ with that changelog section as notes and fails if the section is missing.
 ## Testing
 
 - Unit tests use `tests/mock-publish.ts` (the instance shape above) and a mocked `requestUrl`.
-- Manual: `~/Local/Obsidian/TESTVAULT` has this repo symlinked as the plugin plus Hot Reload.
-  Run `npm run dev`, paste `dev/fake-publish.js` in the console before the plugin loads
-  (or toggle the plugin after), then `await fakePublish.apiUploadFile(app.vault.getFileByPath("Note.md"))`.
-  Re-pasting the snippet empties the fake.
-- Throwaway target: `finn-matti/publish-feed-test`, feed at
-  `https://finn-matti.github.io/publish-feed-test/feed.atom`.
+- Manual loop: throwaway vault with this repo symlinked as the plugin plus Hot Reload; `npm run dev`;
+  paste `dev/fake-publish.js` in the console before the plugin loads (or toggle the plugin after),
+  then `await fakePublish.apiUploadFile(app.vault.getFileByPath("Note.md"))`. Re-pasting the
+  snippet empties the fake. `dev/inspect-publish.js` dumps a real site's instance state.
+- Machine-specific paths and test targets belong in `CLAUDE.local.md` (gitignored), not here.
 - CI `npm ci` fails with "Missing: ... from lock file" if the lockfile lacks other platforms'
   optional packages: delete `node_modules` and `package-lock.json`, `npm install`. Keep the
   root `esbuild` equal to vitest's vite dependency.
 
-Still to check against a real site (`TESTVAULT` has one; `dev/inspect-publish.js` dumps the instance state):
+Still to check against a real site:
 - Entry URLs with a custom domain.

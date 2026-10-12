@@ -46,7 +46,25 @@ No other network requests are made and no telemetry is collected.
 
 ```bash
 npm install
-npm run dev     # watch build
-npm test        # unit tests against a mock Publish instance
-npm run build
+npm run dev            # watch build to main.js
+npm test               # unit tests; npm run test:coverage for a report
+npm run build          # typecheck + production build
 ```
+
+To try it in Obsidian, use a throwaway vault:
+
+1. Symlink or copy this folder to `<vault>/.obsidian/plugins/better-publish-feed`.
+2. Enable community plugins, this plugin, and optionally the
+   [Hot Reload](https://github.com/pjeby/hot-reload) plugin to reload on every rebuild.
+3. Without a Publish site, enable the core Publish plugin and paste
+   [`dev/fake-publish.js`](dev/fake-publish.js) into the developer console, then disable and
+   re-enable this plugin. Upload notes with
+   `await fakePublish.apiUploadFile(app.vault.getFileByPath("Note.md"))`.
+4. With a real site, [`dev/inspect-publish.js`](dev/inspect-publish.js) prints what the
+   Publish instance returns (read-only).
+
+Use a throwaway GitHub repository and a fine-grained token limited to it.
+
+## License
+
+[MIT](LICENSE)

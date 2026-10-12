@@ -14,7 +14,7 @@
 		"test:coverage": "vitest run --coverage"
 	},
 	"keywords": [],
-	"license": "0-BSD",
+	"license": "MIT",
 	"devDependencies": {
 		"@commitlint/cli": "^21.2.3",
 		"@commitlint/config-conventional": "^21.2.3",
@@ -34,5 +34,6 @@
 	},
 	"dependencies": {
 		"monkey-around": "^3.0.0"
-	}
+	},
+	"author": "Martin 'Matti' Hähnel"
 }

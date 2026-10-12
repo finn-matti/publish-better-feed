@@ -23,3 +23,6 @@ data.json
 
 # Test coverage reports
 coverage
+
+# Personal Claude Code instructions
+CLAUDE.local.md
