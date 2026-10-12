@@ -3,6 +3,8 @@ import type { PublishFile } from './publish';
 export interface NoteMeta {
 	title: string;
 	summary: string;
+	/** Full text as HTML; only set when a renderer is given. */
+	content?: string;
 }
 
 export type MetaResolver = (file: PublishFile) => Promise<NoteMeta>;
@@ -52,6 +54,7 @@ function frontmatter(
 export function metaResolver(
 	getLiveText: LiveText,
 	parseYaml: (yaml: string) => unknown,
+	render?: (text: string, path: string) => string,
 ): MetaResolver {
 	return async (live) => {
 		const basename = live.path.replace(/^.*\//, '').replace(/\.md$/i, '');
@@ -61,6 +64,20 @@ export function metaResolver(
 		return {
 			title: str(fm.title) ?? basename,
 			summary: str(fm.description) ?? firstParagraph(text),
+			content: render ? safeRender(render, text, live.path) : undefined,
 		};
 	};
+}
+
+/** A note that can't be rendered still gets its summary. */
+function safeRender(
+	render: (text: string, path: string) => string,
+	text: string,
+	path: string,
+): string | undefined {
+	try {
+		return render(text, path);
+	} catch {
+		return undefined;
+	}
 }

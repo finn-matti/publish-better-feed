@@ -13,6 +13,10 @@ summaries and lists oldest first. This plugin builds a proper feed instead.
    summary from the `description` property or the first paragraph).
 3. It pushes `feed.atom` to a GitHub repository served by GitHub Pages.
 
+The feed carries each note's published text as HTML (or only a summary, see the Content
+setting). Links and embeds only point at published files, links to unpublished notes become
+plain text, and comments and frontmatter are removed.
+
 Not supported: changes published from elsewhere (the `ob` CLI or another
 device). Run **Rebuild feed** to pick them up.
 

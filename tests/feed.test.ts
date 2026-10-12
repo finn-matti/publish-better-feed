@@ -86,6 +86,27 @@ describe('buildAtom', () => {
 	});
 });
 
+describe('buildAtom content', () => {
+	it('emits escaped HTML content when present', async () => {
+		const entries = await buildEntries([file('a.md', 1_700_000_000_000)], {
+			siteUrl: 'https://x.test',
+			maxEntries: 5,
+			resolve: () => Promise.resolve({ title: 'A', summary: 's', content: '<p>Hi &amp; <b>there</b></p>' }),
+		});
+		const xml = buildAtom({ title: 'T', siteUrl: 'https://x.test', feedUrl: 'https://x.test/f.atom', author: 'Me' }, entries);
+		expect(xml).toContain('<content type="html">&lt;p&gt;Hi &amp;amp; &lt;b&gt;there&lt;/b&gt;&lt;/p&gt;</content>');
+		expect(xml).toContain('<summary type="text">s</summary>');
+	});
+	it('omits content when there is none', async () => {
+		const entries = await buildEntries([file('a.md', 1_700_000_000_000)], {
+			siteUrl: 'https://x.test',
+			maxEntries: 5,
+			resolve: () => Promise.resolve({ title: 'A', summary: 's' }),
+		});
+		expect(buildAtom({ title: 'T', siteUrl: 'https://x.test', feedUrl: 'f', author: 'Me' }, entries)).not.toContain('<content');
+	});
+});
+
 describe('firstParagraph', () => {
 	it('skips frontmatter and headings, flattens links', () => {
 		const md = '---\nfoo: 1\n---\n# Title\n\nSee [[Other|this]] and **bold**.\n\nSecond.';

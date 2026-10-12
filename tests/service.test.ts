@@ -126,4 +126,27 @@ describe('FeedService.rebuild', () => {
 		await new Promise((r) => globalThis.setTimeout(r, 10));
 		expect(push).toHaveBeenCalledTimes(2);
 	});
+
+	it('asks for full text unless the content mode is summary', async () => {
+		const seen: boolean[] = [];
+		const make = (contentMode: 'full' | 'summary') =>
+			setup({
+				getSettings: () => ({
+					...DEFAULT_SETTINGS,
+					githubOwner: 'o',
+					githubRepo: 'r',
+					tokenSecretName: 'tok',
+					contentMode,
+				}),
+				createMetaResolver: (_inst, ctx) => {
+					seen.push(ctx.full);
+					expect(ctx.files.map((f) => f.path)).toEqual(['a.md', 'b.md']);
+					expect(ctx.siteUrl).toBe('https://publish.obsidian.md/my-slug');
+					return (f) => Promise.resolve({ title: f.path, summary: '' });
+				},
+			});
+		await make('full').service.rebuild(false);
+		await make('summary').service.rebuild(false);
+		expect(seen).toEqual([true, false]);
+	});
 });

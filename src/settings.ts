@@ -41,6 +41,19 @@ export class FeedSettingTab extends PluginSettingTab {
 			'feedAuthor',
 		);
 		new Setting(containerEl)
+			.setName('Content')
+			.setDesc('Full text puts each note\'s published text in the feed. Summary shows one short snippet.')
+			.addDropdown((d) =>
+				d
+					.addOption('full', 'Full text')
+					.addOption('summary', 'Summary only')
+					.setValue(s.contentMode)
+					.onChange(async (v) => {
+						s.contentMode = v === 'summary' ? 'summary' : 'full';
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
 			.setName('Maximum entries')
 			.addText((t) =>
 				t.setValue(String(s.maxEntries)).onChange(async (v) => {

@@ -5,6 +5,7 @@ import type { MetaResolver } from './notes';
 import {
 	parsePublishList,
 	resolveSiteUrl,
+	type PublishFile,
 	type PublishInstance,
 } from './publish';
 import { feedUrl, type FeedSettings } from './settings-model';
@@ -13,7 +14,10 @@ export interface FeedDeps {
 	getSettings: () => FeedSettings;
 	getInstance: () => PublishInstance | null;
 	getToken: (secretName: string) => string | null;
-	createMetaResolver: (inst: PublishInstance) => MetaResolver;
+	createMetaResolver: (
+		inst: PublishInstance,
+		ctx: { siteUrl: string; files: PublishFile[]; full: boolean },
+	) => MetaResolver;
 	push: (
 		target: GithubTarget,
 		content: string,
@@ -74,7 +78,11 @@ export class FeedService {
 		const entries = await buildEntries(files, {
 			siteUrl,
 			maxEntries: s.maxEntries,
-			resolve: this.deps.createMetaResolver(inst),
+			resolve: this.deps.createMetaResolver(inst, {
+				siteUrl,
+				files,
+				full: s.contentMode === 'full',
+			}),
 		});
 		// An empty list may be a bad response; don't let an automatic run wipe a good feed.
 		if (entries.length === 0 && !manual) {

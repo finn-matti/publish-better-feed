@@ -4,6 +4,7 @@ import { pushFile } from './github';
 import { liveText } from './live';
 import { metaResolver } from './notes';
 import { getPublishInstance, hookPublish } from './publish';
+import { createRenderer } from './render';
 import { FeedService } from './service';
 import { FeedSettingTab } from './settings';
 import { DEFAULT_SETTINGS, type FeedSettings } from './settings-model';
@@ -23,8 +24,15 @@ export default class FeedPlugin extends Plugin {
 			getSettings: () => this.settings,
 			getInstance: () => getPublishInstance(this.app),
 			getToken: (name) => this.app.secretStorage.getSecret(name),
-			createMetaResolver: (inst) =>
-				metaResolver(
+			createMetaResolver: (inst, { siteUrl, files, full }) => {
+				const render = full
+					? createRenderer({
+							siteUrl,
+							assetBase: `https://${inst.host}/access/${encodeURIComponent(inst.siteId)}`,
+							files: files.map((f) => f.path),
+						})
+					: undefined;
+				return metaResolver(
 					(live) =>
 						liveText(
 							inst,
@@ -35,7 +43,9 @@ export default class FeedPlugin extends Plugin {
 							live,
 						),
 					parseYaml,
-				),
+					render,
+				);
+			},
 			push: pushFile,
 			notify: (message) => new Notice(message),
 			logError: (e) => console.error('Publish feed:', e),

@@ -7,6 +7,7 @@ export interface FeedSettings {
 	tokenSecretName: string;
 	feedTitle: string;
 	feedAuthor: string;
+	contentMode: 'summary' | 'full';
 	maxEntries: number;
 	autoPush: boolean;
 	debounceSeconds: number;
@@ -20,6 +21,7 @@ export const DEFAULT_SETTINGS: FeedSettings = {
 	tokenSecretName: '',
 	feedTitle: 'Recent changes',
 	feedAuthor: '',
+	contentMode: 'full',
 	maxEntries: 50,
 	autoPush: true,
 	debounceSeconds: 10,

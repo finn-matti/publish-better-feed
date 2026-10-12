@@ -8,6 +8,8 @@ export interface FeedEntry {
 	published: Date;
 	updated: Date;
 	summary: string;
+	/** Full text as HTML, when enabled. */
+	content?: string;
 }
 
 /** Publish timestamps are assumed to be epoch ms; tolerate seconds. */
@@ -44,6 +46,7 @@ export async function buildEntries(
 			published: toDate(f.ctime || f.mtime),
 			updated: toDate(f.mtime || f.ctime),
 			summary: meta.summary || meta.title,
+			content: meta.content,
 		});
 		if (entries.length >= opts.maxEntries) break;
 	}

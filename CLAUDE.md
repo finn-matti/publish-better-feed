@@ -16,7 +16,8 @@ types (xml/json), so the feed is hosted externally. Goal: a better `rss.xml`.
    this instance is observed; the "Rebuild feed" command covers changes made elsewhere
    (`ob` CLI, other devices).
 2. Debounce after the last upload or remove to detect the end of a publish run.
-3. Build Atom from `apiList()` (what's live and when) plus vault metadata.
+3. Build Atom from `apiList()` (what's live and when) plus the verified published text of each
+   note: a summary and, by default, the full text as HTML (`render.ts`, unified + `@quartz-community/remark-obsidian`).
 4. Push `feed.atom` to a GitHub repo served by GitHub Pages (Contents API).
 
 Logic lives in `service.ts` (`FeedService`, dependencies injected) and the small modules it
@@ -46,6 +47,13 @@ URLs as Publish builds them: site = `https://publish.obsidian.md/<slug>` (or the
 domain, no slug); page = site + `/` + path without `.md`, each segment
 `encodeURIComponent` with `%20` replaced by `+`. `permalink` is ignored by Publish's own links.
 
+Assets are served at `https://<host>/access/<siteId>/<path>` (`host` is the API host, each path
+segment `encodeURIComponent`). How the live site renders a note, which `render.ts` follows: published
+wikilinks are links (alias as text, `Note > Heading` for heading links); unpublished or missing ones are
+still links with the written text; note embeds are inlined, embeds of unpublished notes render nothing;
+image embeds and relative Markdown images become `<img>` of the asset (`|100` width, `|alt` alt);
+`==x==` is `<mark>`; `%%comments%%` vanish (but not inside code); callouts are boxes; frontmatter is hidden.
+
 To inspect internals: `npx @electron/asar extract /Applications/Obsidian.app/Contents/Resources/app.asar <dir>`,
 then grep `app.js` (identifiers are minified, property and string names are not).
 
@@ -61,6 +69,9 @@ then grep `app.js` (identifiers are minified, property and string names are not)
   live hash from `apiList()`, read locally or via `apiDownloadFile(path)`. Otherwise use the file name
   and no summary. `apiDownloadFile` returns an `ArrayBuffer` and never throws; on a server error it
   returns the error body ("Something broke!"), so always verify.
+- Rendering: only published files are linked or embedded. Unpublished wikilinks become plain text,
+  embeds of unpublished files are dropped, raw HTML is dropped, and link or image URLs must be
+  http(s), mailto or a published path. Comments and frontmatter never reach the output.
 - An automatic run with zero entries must not push (a bad `apiList()` would wipe the feed).
 - No Node APIs: `requestUrl` and `crypto.subtle`, so it works on mobile.
 - The GitHub token lives in SecretStorage (since 1.11.4, hence `minAppVersion`); settings
@@ -75,7 +86,7 @@ then grep `app.js` (identifiers are minified, property and string names are not)
 
 - One entry per note (current) vs. per change. Per-change needs a persisted snapshot of
   `apiList()` and gives crossposting tools new IDs.
-- Full content instead of summary: needs link and image rewriting to Publish URLs.
+- Inline note embeds (Publish inlines them; we link to them).
 - Noise filtering (renames, opt-in per change).
 
 ## Commits

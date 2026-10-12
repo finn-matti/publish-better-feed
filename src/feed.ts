@@ -46,6 +46,9 @@ export function buildAtom(meta: FeedMeta, entries: FeedEntry[]): string {
 				`    <summary type="text">${escapeXml(e.summary)}</summary>`,
 			);
 		}
+		if (e.content) {
+			lines.push(`    <content type="html">${escapeXml(e.content)}</content>`);
+		}
 		lines.push('  </entry>');
 	}
 	lines.push('</feed>', '');

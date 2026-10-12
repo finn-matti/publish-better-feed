@@ -67,4 +67,15 @@ describe('metaResolver', () => {
 		await metaResolver(getText, parseYaml)(file);
 		expect(getText).toHaveBeenCalledWith(file);
 	});
+
+	it('adds rendered content when a renderer is given, and survives a failing renderer', async () => {
+		const withRender = metaResolver(text('# T\n\nBody.'), parseYaml, (t, p) => `<x>${p}:${t.length}</x>`);
+		expect((await withRender(live('a.md'))).content).toBe('<x>a.md:10</x>');
+		const failing = metaResolver(text('Body.'), parseYaml, () => {
+			throw new Error('boom');
+		});
+		expect(await failing(live('a.md'))).toEqual({ title: 'a', summary: 'Body.', content: undefined });
+		const none = metaResolver(text('Body.'), parseYaml);
+		expect((await none(live('a.md'))).content).toBeUndefined();
+	});
 });
