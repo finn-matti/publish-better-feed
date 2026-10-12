@@ -11,6 +11,8 @@ export interface FeedSettings {
 	cooldownHours: number;
 	maxEntries: number;
 	autoPush: boolean;
+	/** Internal: a publish was seen and no update has succeeded since. */
+	pendingUpdate: boolean;
 }
 
 export const DEFAULT_SETTINGS: FeedSettings = {
@@ -25,6 +27,7 @@ export const DEFAULT_SETTINGS: FeedSettings = {
 	cooldownHours: 24,
 	maxEntries: 50,
 	autoPush: true,
+	pendingUpdate: false,
 };
 
 /** Public URL of the feed on GitHub Pages. */

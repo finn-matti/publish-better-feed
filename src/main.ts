@@ -7,6 +7,7 @@ import { updateFeed, type FeedDeps } from './pipeline';
 import { getPublishInstance, hookPublish } from './publish';
 import { createRenderer } from './render';
 import { FeedRunner } from './runner';
+import { statusText } from './status';
 import { FeedSettingTab } from './settings';
 import { DEFAULT_SETTINGS, type FeedSettings } from './settings-model';
 import { assetBase } from './urls';
@@ -18,6 +19,8 @@ import { assetBase } from './urls';
  *  2. The hook tells the runner that something was published (`requestUpdate`).
  *  3. The runner waits for quiet, then runs `updateFeed` (pipeline.ts): read the old feed, ask
  *     Publish what is live, build the entries and the Atom file, push it to GitHub.
+ *  4. The status bar shows where the runner is. A publish that is never followed by a successful
+ *     update is remembered (`pendingUpdate`) and finished at the next start.
  */
 export default class FeedPlugin extends Plugin {
 	settings!: FeedSettings;
@@ -56,11 +59,26 @@ export default class FeedPlugin extends Plugin {
 			readFeed,
 			push: pushFile,
 		};
+		// The status bar shows progress (desktop only); clicking it updates the feed now.
+		const bar = this.addStatusBarItem();
+		bar.addClass('mod-clickable');
+		this.registerDomEvent(bar, 'click', () => void this.runner.updateNow());
+
 		this.runner = new FeedRunner({
 			update: (manual) => updateFeed(deps, manual),
 			debounce: (fn, ms) => debounce(fn, ms, true),
 			notify: (message) => new Notice(message),
 			logError: (e) => console.error('Publish feed:', e),
+			onStatus: (status) => {
+				const { text, tooltip } = statusText(status);
+				bar.setText(text);
+				bar.setAttr('aria-label', tooltip);
+			},
+			setDirty: (dirty) => {
+				if (this.settings.pendingUpdate === dirty) return;
+				this.settings.pendingUpdate = dirty;
+				void this.saveSettings();
+			},
 		});
 
 		this.addSettingTab(new FeedSettingTab(this.app, this));
@@ -69,7 +87,11 @@ export default class FeedPlugin extends Plugin {
 			name: 'Rebuild feed',
 			callback: () => void this.runner.updateNow(),
 		});
-		this.app.workspace.onLayoutReady(() => this.installHook());
+		this.app.workspace.onLayoutReady(() => {
+			this.installHook();
+			// Closing Obsidian can interrupt an update; finish it now.
+			if (this.settings.pendingUpdate && this.settings.autoPush) this.runner.requestUpdate();
+		});
 	}
 
 	onunload() {

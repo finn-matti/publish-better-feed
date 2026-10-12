@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { FeedFile, GithubTarget, PushResult } from '../src/github';
-import { updateFeed, type FeedDeps } from '../src/pipeline';
+import { SetupError, updateFeed, type FeedDeps } from '../src/pipeline';
 import { DEFAULT_SETTINGS } from '../src/settings-model';
 import { mockPublish } from './mock-publish';
 
@@ -78,6 +78,7 @@ describe('updateFeed', () => {
 	])('throws a readable error when %s, before touching GitHub', async (_name, override, text) => {
 		const { service, push, readFeed } = setup(override);
 		await expect(service.update(false)).rejects.toThrow(text);
+		await expect(service.update(false)).rejects.toBeInstanceOf(SetupError);
 		expect(readFeed).not.toHaveBeenCalled();
 		expect(push).not.toHaveBeenCalled();
 	});

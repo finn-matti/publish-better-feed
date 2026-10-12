@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FeedRunner, QUIET_MS, type Debounced, type RunnerDeps } from '../src/runner';
+import { SetupError } from '../src/pipeline';
+import { FeedRunner, QUIET_MS, type Debounced, type RunnerDeps, type Status } from '../src/runner';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -19,8 +20,18 @@ function setup(update: RunnerDeps['update'] = () => Promise.resolve('updated (2 
 	const notify = vi.fn();
 	const logError = vi.fn();
 	const updateSpy = vi.fn(update);
-	const runner = new FeedRunner({ update: updateSpy, debounce, notify, logError });
-	return { runner, update: updateSpy, notify, logError };
+	const statuses: Status[] = [];
+	const dirty: boolean[] = [];
+	const runner = new FeedRunner({
+		update: updateSpy,
+		debounce,
+		notify,
+		logError,
+		onStatus: (s) => statuses.push(s),
+		setDirty: (d) => dirty.push(d),
+		now: () => new Date(2026, 9, 12, 14, 5),
+	});
+	return { runner, update: updateSpy, notify, logError, statuses, dirty };
 }
 
 const seconds = (n: number) => vi.advanceTimersByTimeAsync(n * 1000);
@@ -139,5 +150,71 @@ describe('FeedRunner', () => {
 		expect(runner.state).toBe('idle');
 		await seconds(60);
 		expect(update).not.toHaveBeenCalled();
+	});
+});
+
+describe('FeedRunner status', () => {
+	it('reports waiting, running, then idle with the result of the update', async () => {
+		const { runner, statuses } = setup();
+		runner.requestUpdate();
+		await seconds(10);
+		expect(statuses.map((s) => s.state)).toEqual(['waiting', 'running', 'idle']);
+		expect(statuses[2]?.last).toEqual({
+			at: new Date(2026, 9, 12, 14, 5),
+			ok: true,
+			message: 'updated (2 entries)',
+		});
+		expect(runner.status).toEqual(statuses[2]);
+	});
+
+	it('reports a failed update with its message', async () => {
+		const { runner, update, statuses } = setup();
+		update.mockRejectedValueOnce(new Error('GitHub PUT failed (401)'));
+		await runner.updateNow();
+		expect(statuses.at(-1)?.last).toMatchObject({ ok: false, message: 'GitHub PUT failed (401)' });
+	});
+});
+
+describe('FeedRunner owes an update until one succeeds', () => {
+	it('is owed from the first publish and paid by a successful update', async () => {
+		const { runner, dirty } = setup();
+		runner.requestUpdate();
+		expect(dirty).toEqual([true]);
+		await seconds(10);
+		expect(dirty).toEqual([true, false]);
+	});
+
+	it('stays owed after a failure, so the next start finishes it', async () => {
+		const { runner, update, dirty } = setup();
+		update.mockRejectedValueOnce(new Error('offline'));
+		runner.requestUpdate();
+		await seconds(10);
+		expect(dirty).toEqual([true]);
+	});
+
+	it('is not owed when only the user can fix the problem', async () => {
+		const { runner, update, dirty } = setup();
+		update.mockRejectedValueOnce(new SetupError('No GitHub token configured'));
+		runner.requestUpdate();
+		await seconds(10);
+		expect(dirty).toEqual([true, false]);
+	});
+
+	it('is still owed when another publish arrived during the update', async () => {
+		let finish!: () => void;
+		const { runner, dirty } = setup(() => new Promise((resolve) => (finish = () => resolve('ok'))));
+		runner.requestUpdate();
+		await seconds(10);
+		runner.requestUpdate();
+		finish();
+		await seconds(0);
+		expect(dirty.at(-1)).toBe(true);
+	});
+
+	it('a manual update that succeeds pays it too', async () => {
+		const { runner, dirty } = setup();
+		runner.requestUpdate();
+		await runner.updateNow();
+		expect(dirty).toEqual([true, false]);
 	});
 });

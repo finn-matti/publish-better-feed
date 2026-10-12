@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   otherwise (Publish itself can't open permalinks that need percent-encoding).
 - Update cooldown (24 hours by default, 0 to show every publish): a note moves to the top of the
   feed at most once per cooldown, while its text always stays current.
+- Status bar item showing when an update is pending, running or done (desktop), and the last
+  error; clicking it updates the feed. An update interrupted by closing Obsidian is finished at the
+  next start.
 - "Rebuild feed" command, which also picks up changes published from elsewhere.
 - Push to a GitHub repository served by GitHub Pages as `feed.atom`; no commit when the
   feed is unchanged.

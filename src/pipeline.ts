@@ -11,6 +11,9 @@ import {
 import { feedUrl, type FeedSettings } from './settings-model';
 import { parseFeedState } from './state';
 
+/** The plugin isn't set up yet; trying again won't help until the user changes something. */
+export class SetupError extends Error {}
+
 /** Everything an update needs from outside, so it can be run with fakes. */
 export interface FeedDeps {
 	getSettings: () => FeedSettings;
@@ -45,11 +48,11 @@ export async function updateFeed(deps: FeedDeps, manual: boolean): Promise<strin
 	// 1. Is everything we need in place?
 	const s = deps.getSettings();
 	const inst = deps.getInstance();
-	if (!inst) throw new Error('Publish is not enabled or not configured');
+	if (!inst) throw new SetupError('Publish is not enabled or not configured');
 	const token = s.tokenSecretName ? deps.getToken(s.tokenSecretName) : null;
-	if (!token) throw new Error('No GitHub token configured');
+	if (!token) throw new SetupError('No GitHub token configured');
 	if (!s.githubOwner || !s.githubRepo) {
-		throw new Error('GitHub owner and repository are required');
+		throw new SetupError('GitHub owner and repository are required');
 	}
 	const target: GithubTarget = {
 		token,

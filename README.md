@@ -18,6 +18,10 @@ settings; zero shows every publish). Publishing again sooner still updates the n
 feed, but not its position, so fixing a typo doesn't resurface it. The feed itself records when each
 note last surfaced.
 
+On desktop the status bar shows when an update is pending, running or finished, and clicking it
+updates the feed right away. If Obsidian is closed before an update has finished, the plugin
+completes it at the next start.
+
 The feed carries each note's published text as HTML (or only a summary, see the Content
 setting). Links and embeds only point at published files, links to unpublished notes become
 plain text, and comments and frontmatter are removed.
