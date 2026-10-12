@@ -8,6 +8,16 @@ const { minAppVersion } = manifest;
 manifest.version = targetVersion;
 writeFileSync('manifest.json', JSON.stringify(manifest, null, '\t'));
 
+// release the changelog: [Unreleased] becomes the target version, a fresh [Unreleased] stays on top
+const changelog = readFileSync('CHANGELOG.md', 'utf8');
+if (changelog.includes('## [Unreleased]') && !changelog.includes(`## [${targetVersion}]`)) {
+	const date = new Date().toISOString().slice(0, 10);
+	writeFileSync(
+		'CHANGELOG.md',
+		changelog.replace('## [Unreleased]', `## [Unreleased]\n\n## [${targetVersion}] - ${date}`),
+	);
+}
+
 // update versions.json with target version and minAppVersion from manifest.json
 // but only if the target version is not already in versions.json
 const versions = JSON.parse(readFileSync('versions.json', 'utf8'));

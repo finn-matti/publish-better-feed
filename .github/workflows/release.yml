@@ -15,6 +15,12 @@ jobs:
         steps:
             - uses: actions/checkout@v6
 
+            - name: Extract release notes
+              run: |
+                  tag="${GITHUB_REF#refs/tags/}"
+                  awk -v t="$tag" '/^## \[/{p = index($0, "[" t "]") > 0; next} p' CHANGELOG.md > notes.md
+                  [ -s notes.md ] || { echo "No CHANGELOG.md section for $tag" >&2; exit 1; }
+
             - name: Use Node.js
               uses: actions/setup-node@v6
               with:
@@ -47,4 +53,5 @@ jobs:
                   gh release create "$tag" \
                     --title="$tag" \
                     --draft \
+                    --notes-file notes.md \
                     main.js manifest.json ${{ steps.styles.outputs.exists == 'true' && 'styles.css' || '' }}
