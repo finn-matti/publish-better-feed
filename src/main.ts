@@ -75,7 +75,7 @@ export default class FeedPlugin extends Plugin {
 		}
 		this.running = true;
 		try {
-			const result = await this.buildAndPush();
+			const result = await this.buildAndPush(manual);
 			if (manual) new Notice(`Publish feed: ${result}`);
 		} catch (e) {
 			console.error('Publish feed:', e);
@@ -91,7 +91,7 @@ export default class FeedPlugin extends Plugin {
 		}
 	}
 
-	private async buildAndPush(): Promise<string> {
+	private async buildAndPush(manual: boolean): Promise<string> {
 		const s = this.settings;
 		const inst: PublishInstance | null = getPublishInstance(this.app);
 		if (!inst) throw new Error('Publish is not enabled or not configured');
@@ -110,6 +110,10 @@ export default class FeedPlugin extends Plugin {
 			maxEntries: s.maxEntries,
 			resolve: vaultMetaResolver(this.app),
 		});
+		// An empty list may be a bad response; don't let an automatic run wipe a good feed.
+		if (entries.length === 0 && !manual) {
+			return 'skipped, no published notes (use Rebuild feed to push anyway)';
+		}
 		const xml = buildAtom(
 			{
 				title: s.feedTitle,
