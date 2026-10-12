@@ -25,8 +25,9 @@ const headers = (t: GithubTarget) => ({
 
 async function currentSha(t: GithubTarget): Promise<string | null> {
 	const res = await requestUrl({
-		url: `${api(t)}?ref=${encodeURIComponent(t.branch)}`,
-		headers: headers(t),
+		// GitHub allows caching GETs for a minute; a stale sha makes the PUT fail with 409.
+		url: `${api(t)}?ref=${encodeURIComponent(t.branch)}&_=${Date.now()}`,
+		headers: { ...headers(t), 'Cache-Control': 'no-cache' },
 		throw: false,
 	});
 	if (res.status === 404) return null;
