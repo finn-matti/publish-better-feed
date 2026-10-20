@@ -1,7 +1,7 @@
 {
 	"id": "better-publish-feed",
 	"name": "Better Publish Feed",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"minAppVersion": "1.13.2",
 	"description": "Generates an Atom feed of recent changes for your Obsidian Publish site and hosts it on GitHub Pages.",
 	"author": "Martin 'Matti' Hähnel",
