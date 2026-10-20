@@ -97,8 +97,9 @@ then grep `app.js` (identifiers are minified, property and string names are not)
   only emits the node types it knows. Comments and frontmatter never reach the output.
 - An automatic run with zero entries must not push (a bad `apiList()` would wipe the feed).
 - No Node APIs: `requestUrl` and `crypto.subtle`, so it works on mobile.
-- The GitHub token lives in SecretStorage (since 1.11.4, hence `minAppVersion`); settings
+- The GitHub token lives in SecretStorage (since 1.11.4); settings
   hold only the secret's name. Never log or echo it.
+- minAppVersion is 1.13.2 for the declarative settings API and secret control.
 - Check the `@since` tag of any newly used API against `minAppVersion`.
 - GitHub Contents API: the GET for the current `sha` must bypass HTTP caches
   (`Cache-Control: no-cache` plus a cache-busting query), otherwise a stale sha gives a 409.

@@ -36,3 +36,27 @@ export function feedUrl(s: FeedSettings): string {
 	const base = `https://${s.githubOwner}.github.io${root ? '' : `/${s.githubRepo}`}`;
 	return `${base}/${s.feedPath}`;
 }
+
+/** Replaces out-of-range numbers (e.g. a hand-edited data.json) with defaults. */
+export function normalizeSettings(s: Partial<FeedSettings>): Partial<FeedSettings> {
+	const out = { ...s };
+	if (out.cooldownHours !== undefined) {
+		if (
+			typeof out.cooldownHours !== 'number' ||
+			out.cooldownHours < 0 ||
+			!Number.isFinite(out.cooldownHours)
+		) {
+			out.cooldownHours = DEFAULT_SETTINGS.cooldownHours;
+		}
+	}
+	if (out.maxEntries !== undefined) {
+		if (
+			typeof out.maxEntries !== 'number' ||
+			out.maxEntries < 1 ||
+			!Number.isInteger(out.maxEntries)
+		) {
+			out.maxEntries = DEFAULT_SETTINGS.maxEntries;
+		}
+	}
+	return out;
+}

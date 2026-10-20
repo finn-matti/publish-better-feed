@@ -28,3 +28,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   feed is unchanged.
 - Settings for feed title, author, GitHub owner, repository, branch and feed path.
 - GitHub token stored in Obsidian's secret storage (requires Obsidian 1.11.4).
+- Requires Obsidian 1.13.2 or later.

@@ -49,6 +49,8 @@ The GitHub token is kept in Obsidian's secret storage (requires Obsidian
 to a single repository. The plugin never reads or handles your Obsidian
 account token.
 
+Requires Obsidian 1.13.2 or later.
+
 **What reaches the feed.** Only text that is published: a note's text is used only if it matches
 what is live on Publish, and edits you haven't published never appear. Links and embeds point only
 at published files, and raw HTML is dropped.

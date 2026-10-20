@@ -8,7 +8,7 @@ import { getPublishInstance, hookPublish } from './publish';
 import { createRenderer } from './render';
 import { FeedRunner } from './runner';
 import { FeedSettingTab } from './settings';
-import { DEFAULT_SETTINGS, type FeedSettings } from './settings-model';
+import { DEFAULT_SETTINGS, normalizeSettings, type FeedSettings } from './settings-model';
 import { assetBase } from './urls';
 
 /**
@@ -107,10 +107,11 @@ export default class FeedPlugin extends Plugin {
 	}
 
 	async loadSettings() {
+		const loaded = (await this.loadData()) as Partial<FeedSettings>;
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<FeedSettings>,
+			normalizeSettings(loaded),
 		);
 	}
 
